@@ -4,6 +4,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
+const crypto = require('crypto');         // built into Node — no install needed
+const nodemailer = require('nodemailer'); // npm install nodemailer
 const User = require('./models/User');
 const Class = require('./models/Class');
 const Subject = require('./models/Subject');
@@ -22,6 +24,15 @@ mongoose.connect(process.env.MONGO_URI)
     console.log('Oh no, something went wrong connecting to MongoDB:');
     console.log(error);
   });
+
+// Used by /forget-password below to actually send the reset email through Gmail
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD
+  }
+});
 
 app.post('/signup', async (req, res) => {
   try {
@@ -45,7 +56,7 @@ app.post('/signup', async (req, res) => {
 
 app.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, remember } = req.body;
 
     // 1. Find the user by their email
     const user = await User.findOne({ email });
@@ -66,10 +77,11 @@ app.post('/login', async (req, res) => {
 
 
   // 3. Create the "wristband" (JWT token) - now includes the role! 
+  // Checked "remember me"? Give it a much longer expiry (30 days) instead of 1 hour.
   const token = jwt.sign(
     { userId: user._id, username: user.username, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: '1h' }
+    { expiresIn: remember ? '30d' : '1h' }
   );
 
     // 4. Send the wristband back to the user
@@ -80,6 +92,78 @@ app.post('/login', async (req, res) => {
 
   } catch (error) {
     console.log('Something went wrong during login:');
+    console.log(error);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
+// ---------- Forgot password flow ----------
+
+app.post('/forget-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    // Respond the same way whether or not the email exists - this stops the
+    // route from being used to check who has an account and who doesn't.
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+      user.resetTokenHash = tokenHash;
+      user.resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+      await user.save();
+
+      const resetLink = `${process.env.FRONTEND_URL}/reset-password.html?token=${rawToken}`;
+
+      try {
+        await transporter.sendMail({
+          from: `"Hope Grade Website" <${process.env.GMAIL_USER}>`,
+          to: email,
+          subject: 'Reset your password',
+          html: `<p>Click the link below to reset your password. It expires in 15 minutes.</p>
+                 <p><a href="${resetLink}">${resetLink}</a></p>
+                 <p>If you didn't request this, you can ignore this email.</p>`
+        });
+      } catch (emailError) {
+        console.log('Failed to send reset email:');
+        console.log(emailError);
+      }
+    }
+
+    res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
+
+  } catch (error) {
+    console.log('Something went wrong during forget-password:');
+    console.log(error);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
+app.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password || password.length < 8) {
+      return res.status(400).json({ error: 'A valid token and an 8+ character password are required.' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({ resetTokenHash: tokenHash });
+
+    if (!user || !user.resetTokenExpiry || user.resetTokenExpiry.getTime() < Date.now()) {
+      return res.status(400).json({ error: 'This link has expired or is invalid.' });
+    }
+
+    user.password = await bcrypt.hash(password, 10);
+    user.resetTokenHash = null;
+    user.resetTokenExpiry = null;
+    await user.save();
+
+    res.json({ message: 'Password updated.' });
+
+  } catch (error) {
+    console.log('Something went wrong during reset-password:');
     console.log(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }

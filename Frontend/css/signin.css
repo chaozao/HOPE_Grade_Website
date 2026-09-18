@@ -15,6 +15,8 @@
   --color-accent-hover: #C57A26;
   --color-error-bg: #FBEAE7;
   --color-error-text: #A6402F;
+  --color-success-bg: #EAF3EA;
+  --color-success-text: #2F6B4F;
 }
 
 body {
@@ -239,6 +241,11 @@ body {
 .auth-banner-error {
   background: var(--color-error-bg);
   color: var(--color-error-text);
+}
+
+.auth-banner-success {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 /* Mobile: stack the panels */
