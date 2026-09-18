@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Insights — Hope Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/student-insights.css">
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <img src="hope.png" alt="Hope" class="sidebar-logo">
+        <span class="sidebar-brand-name">Hope</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item">
+          <i class="bi bi-speedometer2"></i>
+          <span>Grade Overview</span>
+        </a>
+        <a href="grade-entry.html" class="nav-item">
+          <i class="bi bi-pencil-square"></i>
+          <span>Grade Entry</span>
+        </a>
+        <a href="student-insights.html" class="nav-item active">
+          <i class="bi bi-graph-up"></i>
+          <span>Student Insights</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-user">
+        <div class="user-avatar"><i class="bi bi-person-fill"></i></div>
+        <div class="user-info">
+          <span class="user-name" id="user-name">Teacher</span>
+          <span class="user-role">Subject Teacher</span>
+        </div>
+        <button class="logout-btn" id="logout-btn" aria-label="Log out">
+          <i class="bi bi-box-arrow-right"></i>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="content-header">
+        <div>
+          <h1>Student insights</h1>
+          <p class="content-subtitle" id="page-subtitle">See where your class is strong, and who may need extra support.</p>
+        </div>
+        <div class="header-filters">
+          <select id="subject-select"></select>
+        </div>
+      </header>
+
+      <div class="empty-state hidden" id="no-subjects-message">
+        <p>You are not currently assigned to teach any subject.</p>
+      </div>
+
+      <div id="insights-content" class="hidden">
+
+        <section class="insight-panel">
+          <h2>Grade distribution</h2>
+          <p class="panel-subtitle" id="distribution-subtitle"></p>
+          <div class="distribution-bar" id="distribution-bar"></div>
+          <div class="distribution-legend" id="distribution-legend"></div>
+        </section>
+
+        <section class="insight-panel">
+          <h2>Average score per assignment</h2>
+          <p class="panel-subtitle">Where the class is doing well, and where it isn't.</p>
+          <div class="component-cards" id="component-cards"></div>
+        </section>
+
+        <section class="insight-panel">
+          <h2>Students who may need support</h2>
+          <p class="panel-subtitle">Anyone currently below 75%, most urgent first.</p>
+          <div id="at-risk-list"></div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="js/student-insights.js"></script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grade Overview — Hope Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <img src="hope.png" alt="Hope" class="sidebar-logo">
+        <span class="sidebar-brand-name">Hope</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item active">
+          <i class="bi bi-speedometer2"></i>
+          <span>Grade Overview</span>
+        </a>
+        <a href="grade-entry.html" class="nav-item">
+          <i class="bi bi-pencil-square"></i>
+          <span>Grade Entry</span>
+        </a>
+        <a href="student-insights.html" class="nav-item">
+          <i class="bi bi-graph-up"></i>
+          <span>Student Insights</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-user">
+        <div class="user-avatar"><i class="bi bi-person-fill"></i></div>
+        <div class="user-info">
+          <span class="user-name" id="user-name">Teacher</span>
+          <span class="user-role">Subject Teacher</span>
+        </div>
+        <button class="logout-btn" id="logout-btn" aria-label="Log out">
+          <i class="bi bi-box-arrow-right"></i>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="content-header">
+        <div>
+          <h1>Gradebook Dashboard</h1>
+          <p class="content-subtitle">Overview of class performance, overall averages, and assignment scores.</p>
+        </div>
+        <div class="header-filters">
+          <select id="subject-select"></select>
+        </div>
+      </header>
+
+      <div class="empty-state hidden" id="no-subjects-message">
+        <p>You are not currently assigned to teach any subject. Contact your admin if this looks wrong.</p>
+      </div>
+
+      <div id="overview-content" class="hidden">
+        <section class="stat-cards">
+          <div class="stat-card">
+            <span class="stat-label">Class average</span>
+            <span class="stat-value" id="stat-average">—</span>
+            <span class="stat-note" id="stat-average-note"></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Total roster</span>
+            <span class="stat-value" id="stat-roster">—</span>
+            <span class="stat-note" id="stat-roster-note"></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Passing rate</span>
+            <span class="stat-value" id="stat-passing">—</span>
+            <span class="stat-note" id="stat-passing-note"></span>
+          </div>
+        </section>
+
+        <section class="grades-table-section">
+          <div class="table-header">
+            <h2>Student grades overview</h2>
+          </div>
+
+          <table class="grades-table">
+            <thead>
+              <tr>
+                <th>Student name</th>
+                <th>HW 1 (15%)</th>
+                <th>Quiz 1 (20%)</th>
+                <th>Midterm (30%)</th>
+                <th>Project 1 (15%)</th>
+                <th>Current grade</th>
+              </tr>
+            </thead>
+            <tbody id="grades-tbody"></tbody>
+          </table>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

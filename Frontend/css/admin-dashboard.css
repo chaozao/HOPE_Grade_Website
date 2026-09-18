@@ -1,0 +1,109 @@
+.nav-item {
+  background: none;
+  border: none;
+  width: 100%;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.status-active { background: #E9F3EA; color: #2E6B3E; }
+.status-inactive { background: #F1EFE9; color: #6E7B76; }
+
+.btn-secondary {
+  padding: 10px 16px;
+  background: #fff;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-accent);
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12.5px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.btn-small:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 41, 43, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 28px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.modal h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  margin-bottom: 18px;
+}
+
+.modal .field {
+  margin-bottom: 14px;
+}
+
+.modal .field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.modal .field input,
+.modal .field select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}

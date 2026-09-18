@@ -1,0 +1,125 @@
+.insight-panel {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.insight-panel h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.panel-subtitle {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin-bottom: 18px;
+}
+
+/* Grade distribution bar */
+.distribution-bar {
+  display: flex;
+  width: 100%;
+  height: 28px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.distribution-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.seg-a { background: #4C9A5A; }
+.seg-b { background: #E0B03D; }
+.seg-c { background: #E08A3D; }
+.seg-f { background: #C24B3F; }
+.seg-notgraded { background: #D9D4C8; }
+
+.distribution-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Component average cards */
+.component-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.component-card {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: center;
+}
+
+.component-card .label {
+  display: block;
+  font-size: 12px;
+  color: var(--color-muted);
+  margin-bottom: 6px;
+}
+
+.component-card .value {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 22px;
+}
+
+.component-card.lowest {
+  border-color: #C24B3F;
+  background: #FDF2F0;
+}
+
+/* At-risk list */
+.at-risk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.at-risk-row:last-child {
+  margin-bottom: 0;
+}
+
+.at-risk-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.no-risk-message {
+  color: var(--color-muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}
+
+@media (max-width: 700px) {
+  .component-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign Up</title>
+</head>
+<body>
+
+  <h1>Create an Account</h1>
+
+  <form id="signupForm">
+    <label>Name:</label><br>
+    <input type="text" id="name" required><br><br>
+
+    <label>Email:</label><br>
+    <input type="email" id="email" required><br><br>
+
+    <label>Password:</label><br>
+    <input type="password" id="password" required><br><br>
+
+    <button type="submit">Sign Up</button>
+  </form>
+
+  <p id="responseMessage"></p>
+
+  <script>
+    // 1. Grab our form from the page
+    const form = document.getElementById('signupForm');
+
+    // 2. Listen for when the user clicks "Sign Up"
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault(); // stop the page from refreshing
+
+      // 3. Grab what the user typed
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      // 4. Send it to our server
+      try {
+        const response = await fetch('http://localhost:3000/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await response.json();
+
+        // 5. Show the reply on the page
+        document.getElementById('responseMessage').innerText = data.message || data.error;
+
+      } catch (error) {
+        document.getElementById('responseMessage').innerText = 'Something went wrong!';
+      }
+    });
+  </script>
+
+</body>
+</html>

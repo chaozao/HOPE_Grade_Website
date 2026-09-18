@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grade Entry — Hope Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/grade-entry.css">
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <img src="hope.png" alt="Hope" class="sidebar-logo">
+        <span class="sidebar-brand-name">Hope</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item">
+          <i class="bi bi-speedometer2"></i>
+          <span>Grade Overview</span>
+        </a>
+        <a href="grade-entry.html" class="nav-item active">
+          <i class="bi bi-pencil-square"></i>
+          <span>Grade Entry</span>
+        </a>
+        <a href="student-insights.html" class="nav-item">
+          <i class="bi bi-graph-up"></i>
+          <span>Student Insights</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-user">
+        <div class="user-avatar"><i class="bi bi-person-fill"></i></div>
+        <div class="user-info">
+          <span class="user-name" id="user-name">Teacher</span>
+          <span class="user-role">Subject Teacher</span>
+        </div>
+        <button class="logout-btn" id="logout-btn" aria-label="Log out">
+          <i class="bi bi-box-arrow-right"></i>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="content-header">
+        <div>
+          <h1>Grade entry &amp; editing</h1>
+          <p class="content-subtitle" id="page-subtitle">Select a subject to begin entering scores.</p>
+        </div>
+        <div class="header-actions">
+          <select id="subject-select"></select>
+          <button class="btn-primary btn-save" id="save-btn">
+            <i class="bi bi-save2"></i> Save grades
+          </button>
+        </div>
+      </header>
+
+      <div class="info-banner">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>Scores must be between 0 and 100. Leave a field blank if that assignment hasn't been given yet.</span>
+      </div>
+
+      <div class="empty-state hidden" id="no-subjects-message">
+        <p>You are not currently assigned to teach any subject.</p>
+      </div>
+
+      <section class="grades-table-section hidden" id="table-section">
+        <table class="grades-table entry-table">
+          <thead>
+            <tr>
+              <th>Student name</th>
+              <th>HW 1 (0-100)</th>
+              <th>Quiz 1 (0-100)</th>
+              <th>Midterm (0-100)</th>
+              <th>Project 1 (0-100)</th>
+              <th>Current grade</th>
+            </tr>
+          </thead>
+          <tbody id="entry-tbody"></tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/grade-entry.js"></script>
+</body>
+</html>
