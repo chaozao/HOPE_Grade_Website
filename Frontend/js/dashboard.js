@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const token = localStorage.getItem('token');
+    const token = getToken(); // from auth.js — checks sessionStorage AND localStorage
 
     if (!token) {
         window.location.href = 'index.html';
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('user-name').textContent = payload.username;
 
     document.getElementById('logout-btn').addEventListener('click', function () {
-        localStorage.removeItem('token');
+        clearToken(); // from auth.js — clears both storage spots
         window.location.href = 'index.html';
     });
 
