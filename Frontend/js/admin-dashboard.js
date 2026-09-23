@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- LOAD TEACHERS ----------
     async function loadTeachers() {
-        const teachers = await authFetch('http://localhost:3000/admin/teachers');
+        const teachers = await authFetch(API_BASE_URL + '/admin/teachers');
         const tbody = document.getElementById('teachers-tbody');
         tbody.innerHTML = '';
 
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.querySelectorAll('.toggle-status').forEach(function (btn) {
             btn.addEventListener('click', async function () {
-                await authFetch('http://localhost:3000/admin/teachers/' + btn.dataset.id + '/deactivate', { method: 'PATCH' });
+                await authFetch(API_BASE_URL + '/admin/teachers/' + btn.dataset.id + '/deactivate', { method: 'PATCH' });
                 loadTeachers();
             });
         });
@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- LOAD CLASSES ----------
     async function loadClasses() {
-        const classes = await authFetch('http://localhost:3000/admin/classes');
+        const classes = await authFetch(API_BASE_URL + '/admin/classes');
         const tbody = document.getElementById('classes-tbody');
         tbody.innerHTML = '';
 
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- LOAD SUBJECTS ----------
     async function loadSubjects() {
-        const subjects = await authFetch('http://localhost:3000/admin/subjects');
+        const subjects = await authFetch(API_BASE_URL + '/admin/subjects');
         const tbody = document.getElementById('subjects-tbody');
         tbody.innerHTML = '';
 
@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('form-add-teacher').addEventListener('submit', async function (e) {
         e.preventDefault();
         try {
-            await authFetch('http://localhost:3000/admin/teachers', {
+            await authFetch(API_BASE_URL + '/admin/teachers', {
                 method: 'POST',
                 body: JSON.stringify({
                     username: document.getElementById('new-teacher-username').value,
@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('form-add-class').addEventListener('submit', async function (e) {
         e.preventDefault();
         try {
-            await authFetch('http://localhost:3000/admin/classes', {
+            await authFetch(API_BASE_URL + '/admin/classes', {
                 method: 'POST',
                 body: JSON.stringify({
                     name: document.getElementById('new-class-name').value,
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('form-add-subject').addEventListener('submit', async function (e) {
         e.preventDefault();
         try {
-            await authFetch('http://localhost:3000/admin/subjects', {
+            await authFetch(API_BASE_URL + '/admin/subjects', {
                 method: 'POST',
                 body: JSON.stringify({
                     name: document.getElementById('new-subject-name').value,

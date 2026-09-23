@@ -123,3 +123,12 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* A long student name next to a grade pill can overflow the row on a
+   narrow phone - let it wrap onto two lines instead of spilling over. */
+@media (max-width: 480px) {
+  .at-risk-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}

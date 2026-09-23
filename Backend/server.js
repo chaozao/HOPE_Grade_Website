@@ -16,6 +16,30 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ---------- Only allow requests from this specific Wi-Fi network ----------
+// Your Wi-Fi's ipconfig showed address 172.16.4.229 with subnet mask 255.255.192.0,
+// which means every device on this same Wi-Fi gets an address somewhere between
+// 172.16.0.1 and 172.16.63.254. Anything outside that range gets rejected below -
+// including someone trying to reach this server from a different network entirely.
+function isOnAllowedNetwork(ip) {
+  // Requests made from this same computer look like these - always allow those.
+  if (ip === '::1' || ip === '127.0.0.1' || ip === '::ffff:127.0.0.1') return true;
+
+  const cleaned = ip.replace('::ffff:', ''); // Node sometimes adds this prefix to IPv4 addresses
+  const parts = cleaned.split('.').map(Number);
+  if (parts.length !== 4) return false;
+
+  const [a, b, c] = parts;
+  return a === 172 && b === 16 && c >= 0 && c <= 63;
+}
+
+app.use(function (req, res, next) {
+  if (!isOnAllowedNetwork(req.ip)) {
+    return res.status(403).json({ error: 'This server is only reachable from its home Wi-Fi network.' });
+  }
+  next();
+});
+
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('Connected to MongoDB successfully!');

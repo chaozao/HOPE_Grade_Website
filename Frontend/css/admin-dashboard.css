@@ -107,3 +107,35 @@
   gap: 10px;
   margin-top: 20px;
 }
+
+/* BUG FIX: ".nav-item { width: 100%; }" above is meant for the tall
+   vertical desktop sidebar. dashboard.css turns the sidebar into a
+   horizontal row of icons below 900px - without this override, every
+   button still tries to claim 100% of that row at once, breaking the
+   layout. This cancels it out only while the horizontal layout is active. */
+@media (max-width: 900px) {
+  .nav-item {
+    width: auto;
+  }
+}
+
+/* Give the popups breathing room on phones instead of touching the
+   screen edges, and stack their buttons instead of squeezing them. */
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 16px;
+  }
+
+  .modal {
+    padding: 20px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+}

@@ -57,8 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function loadRoster(subjectId) {
         currentSubjectId = subjectId;
-        const data = await authFetch('http://localhost:3000/teacher/subjects/' + subjectId + '/roster');
-
+        const data = await authFetch(API_BASE_URL + '/teacher/subjects/' + subjectId + '/roster');
         document.getElementById('page-subtitle').textContent =
             'Input individual scores for "' + data.subjectName + '" (' + data.totalStudents + ' students).';
 
@@ -120,8 +119,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function init() {
-        const subjects = await authFetch('http://localhost:3000/teacher/my-subjects');
-
+        const subjects = await authFetch(API_BASE_URL + '/teacher/my-subjects');
         if (subjects.length === 0) {
             document.getElementById('no-subjects-message').classList.remove('hidden');
             return;
@@ -160,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         try {
-            await authFetch('http://localhost:3000/teacher/subjects/' + currentSubjectId + '/grades', {
+            await authFetch(API_BASE_URL + '/teacher/subjects/' + currentSubjectId + '/grades', {
                 method: 'PUT',
                 body: JSON.stringify({ grades })
             });

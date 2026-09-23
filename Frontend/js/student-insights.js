@@ -32,8 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const componentLabels = { hw1: 'HW 1', quiz1: 'Quiz 1', midterm: 'Midterm', project1: 'Project 1' };
 
     async function loadInsights(subjectId) {
-        const data = await authFetch('http://localhost:3000/teacher/subjects/' + subjectId + '/insights');
-
+        const data = await authFetch(API_BASE_URL + '/teacher/subjects/' + subjectId + '/insights');
         document.getElementById('distribution-subtitle').textContent =
             data.subjectName + ' — ' + data.className + ' (' + data.totalStudents + ' students)';
 
@@ -91,8 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function init() {
-        const subjects = await authFetch('http://localhost:3000/teacher/my-subjects');
-
+        const subjects = await authFetch(API_BASE_URL + '/teacher/my-subjects');
         if (subjects.length === 0) {
             document.getElementById('no-subjects-message').classList.remove('hidden');
             return;

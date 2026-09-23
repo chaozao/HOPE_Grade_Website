@@ -337,8 +337,47 @@ body {
   .grades-table-section {
     overflow-x: auto;
   }
+
+  /* Give the table a floor so columns stay readable instead of getting
+     squeezed thinner and thinner - this is what actually makes the
+     horizontal scroll work as intended instead of just cramming text. */
+  .grades-table {
+    min-width: 640px;
+  }
 }
 
+/* Extra adjustments only for true phone-width screens (not tablets) */
+@media (max-width: 480px) {
+  /* The sidebar becomes one tight horizontal strip on phones - drop the
+     brand name and role text so the icons, avatar, and logout button
+     that actually matter don't get squeezed or wrap awkwardly. */
+  .sidebar-brand-name {
+    display: none;
+  }
+
+  .user-role {
+    display: none;
+  }
+
+  .sidebar {
+    padding: 10px 12px;
+  }
+
+  .sidebar-nav {
+    margin-left: 12px;
+    gap: 2px;
+  }
+
+  /* Let the subject dropdown take the full row width instead of sitting
+     at its default small size, so it's easier to tap accurately. */
+  .header-filters {
+    width: 100%;
+  }
+
+  .header-filters select {
+    width: 100%;
+  }
+}
 
 .btn-primary {
   padding: 12px 20px;

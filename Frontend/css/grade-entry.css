@@ -65,3 +65,18 @@
 .entry-row.has-error td {
   background: #FDF2F0;
 }
+
+/* On phones, the subject dropdown and Save button can collide side by
+   side - let them wrap and take the full width instead of squeezing. */
+@media (max-width: 480px) {
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .header-actions select,
+  .header-actions .btn-save {
+    width: 100%;
+    justify-content: center;
+  }
+}
