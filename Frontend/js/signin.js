@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     const typingText = document.getElementById('typing-text');
-    const taglineFull = 'Everything your team is working on, in one place.';
+    const taglineFull = 'Manage your grades and monitor effortlessly.';
     let charIndex = 0;
 
     function typeTagline() {
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function () {
         submitBtn.textContent = 'Signing in…';
 
         try {
-            const response = await fetch('http://localhost:3000/login', {
+            const response = await fetch(API_BASE_URL + '/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, remember })

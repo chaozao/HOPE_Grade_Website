@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
         submitBtn.textContent = 'Sending…';
 
         try {
-            await fetch('http://localhost:3000/forget-password', {
+            await fetch(API_BASE_URL + '/forget-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })

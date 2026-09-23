@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     const typingText = document.getElementById('typing-text');
-    const taglineFull = 'Everything your team is working on, in one place.';
+    const taglineFull = 'Start organizing your academic progress today.';
     let charIndex = 0;
 
     function typeTagline() {
