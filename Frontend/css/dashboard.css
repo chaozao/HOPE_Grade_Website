@@ -299,35 +299,86 @@ body {
 .grade-c { background: #FBE9D6; color: #A65F1B; }
 .grade-f { background: #FBEAE7; color: #A6402F; }
 
+/* Sidebar toggle button + dimmed backdrop - hidden entirely on desktop,
+   where the sidebar is always visible and nothing needs toggling. */
+.sidebar-toggle,
+.sidebar-backdrop {
+  display: none;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .dashboard {
     grid-template-columns: 1fr;
   }
 
+  /* The sidebar keeps its normal DESKTOP look (vertical column, full
+     text) - it just lives off-screen to the left until opened. */
   .sidebar {
-    flex-direction: row;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 240px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 200;
+  }
+
+  body.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  /* The round "open/close menu" button, floating over the page. When
+     closed it sits near the screen's edge; when open, it slides to sit
+     right on the sidebar's edge, half over the teal background - only
+     possible now that the selector below can actually reach it. */
+  .sidebar-toggle {
+    display: flex;
     align-items: center;
-    padding: 12px 16px;
+    justify-content: center;
+    position: fixed;
+    top: 50%;
+    left: 16px;
+    transform: translateY(-50%);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--color-panel);
+    color: var(--color-panel-text);
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 201;
+    transition: left 0.25s ease;
   }
 
-  .sidebar-nav {
-    flex-direction: row;
-    margin-left: 20px;
+  body.sidebar-open .sidebar-toggle {
+    left: 240px;
+    transform: translate(-50%, -50%);
   }
 
-  .nav-item span {
-    display: none;
+  /* Dimmed background behind the open drawer - tapping it closes the menu.
+     Written with explicit top/right/bottom/left instead of the "inset"
+     shorthand, since some mobile browsers don't support "inset" yet -
+     without real edges set this way, there's nothing for a tap to hit. */
+  .sidebar-backdrop {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(18, 41, 43, 0.45);
+    z-index: 150;
   }
 
-  .sidebar-user {
-    margin-top: 0;
-    margin-left: auto;
-    border-top: none;
+  body.sidebar-open .sidebar-backdrop {
+    display: block;
   }
 
   .main-content {
     padding: 20px;
+    padding-top: 72px; /* room so the floating toggle button doesn't sit on top of the page title */
   }
 
   .stat-cards {
@@ -343,29 +394,6 @@ body {
      horizontal scroll work as intended instead of just cramming text. */
   .grades-table {
     min-width: 640px;
-  }
-}
-
-/* Extra adjustments only for true phone-width screens (not tablets) */
-@media (max-width: 480px) {
-  /* The sidebar becomes one tight horizontal strip on phones - drop the
-     brand name and role text so the icons, avatar, and logout button
-     that actually matter don't get squeezed or wrap awkwardly. */
-  .sidebar-brand-name {
-    display: none;
-  }
-
-  .user-role {
-    display: none;
-  }
-
-  .sidebar {
-    padding: 10px 12px;
-  }
-
-  .sidebar-nav {
-    margin-left: 12px;
-    gap: 2px;
   }
 
   /* Let the subject dropdown take the full row width instead of sitting
