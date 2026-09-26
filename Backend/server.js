@@ -6,6 +6,9 @@ const bcrypt = require('bcrypt');
 const cors = require('cors');
 const crypto = require('crypto');         // built into Node — no install needed
 const nodemailer = require('nodemailer'); // npm install nodemailer
+const multer = require('multer');         // npm install multer — handles the photo upload
+const path = require('path');             // built into Node — no install needed
+const fs = require('fs');                 // built into Node — no install needed
 const User = require('./models/User');
 const Class = require('./models/Class');
 const Subject = require('./models/Subject');
@@ -55,6 +58,36 @@ const transporter = nodemailer.createTransport({
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD
+  }
+});
+
+// ---------- Profile photo uploads ----------
+// Make sure the folder we're about to save photos into actually exists -
+// multer will not create missing folders on its own.
+const avatarsDir = path.join(__dirname, 'uploads', 'avatars');
+fs.mkdirSync(avatarsDir, { recursive: true });
+
+// Serve uploaded photos as plain files, e.g. GET /uploads/avatars/abc123.jpg
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+const avatarUpload = multer({
+  storage: multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, avatarsDir);
+    },
+    filename: function (req, file, cb) {
+      // Name the file after the logged-in user, so a re-upload just replaces
+      // the old one instead of piling up unused files forever.
+      const ext = path.extname(file.originalname);
+      cb(null, req.user.userId + '-' + Date.now() + ext);
+    }
+  }),
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max
+  fileFilter: function (req, file, cb) {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed.'));
+    }
+    cb(null, true);
   }
 });
 
@@ -202,6 +235,88 @@ const { verifyToken, requireRole } = require('./middleware/auth');
 // A route ANYONE with a valid token can access (any role)
 app.get('/profile', verifyToken, (req, res) => {
   res.json({ message: `Hello ${req.user.username}, you are a ${req.user.role}.` });
+});
+
+// ---------- Own account settings (name, photo, password) ----------
+
+// Get your own full profile
+app.get('/me', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('-password -resetTokenHash -resetTokenExpiry');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Something went wrong.' });
+  }
+});
+
+// Change your own display name
+app.put('/me', verifyToken, async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    if (!username || !username.trim()) {
+      return res.status(400).json({ error: 'Name cannot be empty.' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { username: username.trim() },
+      { new: true, runValidators: true }
+    ).select('-password -resetTokenHash -resetTokenExpiry');
+
+    res.json(user);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Upload/replace your own profile photo
+app.post('/me/photo', verifyToken, avatarUpload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No photo was uploaded.' });
+    }
+
+    const photoPath = '/uploads/avatars/' + req.file.filename;
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { photo: photoPath },
+      { new: true }
+    ).select('-password -resetTokenHash -resetTokenExpiry');
+
+    res.json(user);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Change your own password (must prove you know the current one)
+app.put('/me/password', verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+    }
+
+    const user = await User.findById(req.user.userId);
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Current password is incorrect.' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.json({ message: 'Password updated successfully.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Something went wrong.' });
+  }
 });
 
 // List all teachers, along with their advisory class + subjects taught

@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function loadRoster(subjectId) {
         currentSubjectId = subjectId;
         const data = await authFetch(API_BASE_URL + '/teacher/subjects/' + subjectId + '/roster');
+
         document.getElementById('page-subtitle').textContent =
             'Input individual scores for "' + data.subjectName + '" (' + data.totalStudents + ' students).';
 
@@ -120,14 +121,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function init() {
         const subjects = await authFetch(API_BASE_URL + '/teacher/my-subjects');
+        const select = document.getElementById('subject-select');
+
         if (subjects.length === 0) {
             document.getElementById('no-subjects-message').classList.remove('hidden');
+            select.innerHTML = '<option value="">N/A</option>';
+            select.disabled = true;
+            document.getElementById('save-btn').disabled = true;
             return;
         }
 
         document.getElementById('table-section').classList.remove('hidden');
 
-        const select = document.getElementById('subject-select');
         select.innerHTML = subjects.map(function (s) {
             return '<option value="' + s._id + '">' + s.name + ' — ' + s.className + '</option>';
         }).join('');
@@ -140,6 +145,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.getElementById('save-btn').addEventListener('click', async function () {
+        if (!currentSubjectId) {
+            alert('Please select a subject before saving.');
+            return;
+        }
+
         const rows = document.querySelectorAll('.entry-row');
         const hasErrors = document.querySelectorAll('.grade-input.state-error').length > 0;
 

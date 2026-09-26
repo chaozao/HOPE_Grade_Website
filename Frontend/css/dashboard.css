@@ -187,6 +187,12 @@ body {
   color: var(--color-text);
 }
 
+.header-filters select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #F1EFE9;
+}
+
 /* Stat cards */
 .stat-cards {
   display: grid;
@@ -423,6 +429,16 @@ body {
 .btn-primary:hover {
   background: var(--color-accent-hover);
 }
+
+.btn-primary:disabled {
+  background: #D9D4C8;
+  cursor: not-allowed;
+}
+
+.btn-primary:disabled:hover {
+  background: #D9D4C8;
+}
+
 
 .empty-state {
   background: #fff;

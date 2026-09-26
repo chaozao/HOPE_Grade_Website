@@ -80,15 +80,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function init() {
         const subjects = await authFetch(API_BASE_URL + '/teacher/my-subjects');
+        const select = document.getElementById('subject-select');
 
         if (subjects.length === 0) {
             document.getElementById('no-subjects-message').classList.remove('hidden');
+            select.innerHTML = '<option value="">N/A</option>';
+            select.disabled = true;
             return;
         }
 
         document.getElementById('overview-content').classList.remove('hidden');
 
-        const select = document.getElementById('subject-select');
         select.innerHTML = subjects.map(function (s) {
             return '<option value="' + s._id + '">' + s.name + ' — ' + s.className + '</option>';
         }).join('');
