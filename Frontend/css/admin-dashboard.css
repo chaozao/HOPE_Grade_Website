@@ -72,6 +72,11 @@
   padding: 28px;
   width: 100%;
   max-width: 380px;
+  /* On a short screen (phone held sideways especially), a tall form could
+     otherwise run off the bottom of the screen with no way to reach the
+     buttons - this keeps it fully reachable by scrolling inside itself. */
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal h2 {
@@ -110,6 +115,15 @@
 
 /* Give the popups breathing room on phones instead of touching the
    screen edges, and stack their buttons instead of squeezing them. */
+/* Any phone or tablet using the mobile drawer layout - matches the same
+   900px threshold used everywhere else on this site. */
+@media (max-width: 900px) {
+  .modal .field input,
+  .modal .field select {
+    font-size: 16px; /* stops iOS Safari from auto-zooming the page when tapped */
+  }
+}
+
 @media (max-width: 480px) {
   .modal-overlay {
     padding: 16px;

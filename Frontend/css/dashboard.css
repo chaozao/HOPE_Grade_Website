@@ -2,6 +2,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent; /* removes the ugly grey flash Android/iOS show on tap */
 }
 
 :root {
@@ -21,6 +22,7 @@ body {
   font-family: 'Inter', sans-serif;
   color: var(--color-text);
   background: var(--color-page);
+  overflow-x: hidden; /* safety net: nothing on the page should ever force sideways scrolling, regardless of screen width */
 }
 
 .dashboard {
@@ -329,6 +331,12 @@ body {
     transform: translateX(-100%);
     transition: transform 0.25s ease;
     z-index: 200;
+    /* On a phone held sideways, a notch or rounded corner can eat into
+       this edge - nudge the sidebar's own content inward if so, without
+       shrinking it below its normal padding on ordinary phones. */
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-top: max(24px, env(safe-area-inset-top));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
 
   body.sidebar-open .sidebar {
@@ -345,7 +353,11 @@ body {
     justify-content: center;
     position: fixed;
     top: 50%;
-    left: 16px;
+    /* max(...) picks whichever is bigger: the normal 16px gap, or the
+       phone's actual safe area (e.g. around an iPhone's rounded corner/
+       Dynamic Island when held sideways) - so the button never ends up
+       stuck in an unreachable curved corner. */
+    left: max(16px, env(safe-area-inset-left));
     transform: translateY(-50%);
     width: 38px;
     height: 38px;
@@ -384,11 +396,13 @@ body {
 
   .main-content {
     padding: 20px;
-    padding-top: 72px; /* room so the floating toggle button doesn't sit on top of the page title */
   }
 
+  /* 2 columns by default under 900px - makes good use of the extra width
+     on tablets and phones held sideways (landscape), where there's plenty
+     of room for more than one card per row. */
   .stat-cards {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .grades-table-section {
@@ -410,6 +424,15 @@ body {
 
   .header-filters select {
     width: 100%;
+    font-size: 16px; /* stops iOS Safari from auto-zooming the page when this is tapped */
+  }
+}
+
+/* Below this, drop back to 1 column - a real narrow phone held upright
+   doesn't have room for 2 side by side without squeezing the numbers. */
+@media (max-width: 480px) {
+  .stat-cards {
+    grid-template-columns: 1fr;
   }
 }
 

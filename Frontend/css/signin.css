@@ -2,6 +2,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent; /* removes the ugly grey flash Android/iOS show on tap */
 }
 
 :root {
@@ -23,6 +24,7 @@ body {
   font-family: 'Inter', sans-serif;
   color: var(--color-text);
   background: var(--color-page);
+  overflow-x: hidden; /* safety net: nothing should force sideways scrolling on any screen width */
 }
 
 .auth {
@@ -266,6 +268,23 @@ body {
 
   .auth-tagline {
     font-size: 17px;
+  }
+
+  /* iOS Safari auto-zooms the whole page when you tap an input with a
+     font-size under 16px - this stops that jump without changing how
+     the text looks on desktop. */
+  .field input {
+    font-size: 16px;
+  }
+}
+
+/* On a phone turned sideways (landscape), the screen is short. The
+   decorative brand panel above would otherwise push the actual sign-in
+   form below the fold - so on short screens, just skip it and let the
+   form take the space. Nothing about portrait mode is affected. */
+@media (max-width: 820px) and (orientation: landscape) and (max-height: 480px) {
+  .auth-brand {
+    display: none;
   }
 }
 

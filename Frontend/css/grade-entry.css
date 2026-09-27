@@ -86,3 +86,12 @@
     justify-content: center;
   }
 }
+
+/* This is the most-tapped input on the whole site - a teacher entering
+   scores for a whole class, one box at a time. Without this, iOS Safari
+   would auto-zoom the page in and out on every single tap. */
+@media (max-width: 900px) {
+  .grade-input {
+    font-size: 16px;
+  }
+}

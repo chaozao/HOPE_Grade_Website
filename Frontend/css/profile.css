@@ -77,6 +77,12 @@
   box-shadow: 0 0 0 3px rgba(217, 138, 51, 0.15);
 }
 
+@media (max-width: 900px) {
+  .field input {
+    font-size: 16px; /* stops iOS Safari from auto-zooming the page when tapped */
+  }
+}
+
 .settings-banner {
   padding: 12px 14px;
   border-radius: 6px;
