@@ -16,8 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('user-name').textContent = payload.username;
 
     document.getElementById('logout-btn').addEventListener('click', function () {
-        clearToken(); // from auth.js — clears both storage spots
-        window.location.href = 'index.html';
+        confirmLogout(); // from auth.js — asks "Are you sure?" first, then signs out
     });
 
     async function authFetch(url, options = {}) {

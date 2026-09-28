@@ -7,8 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.getElementById('logout-btn').addEventListener('click', function () {
-        clearToken(); // from auth.js — clears both storage spots
-        window.location.href = 'index.html';
+        confirmLogout(); // from auth.js — asks "Are you sure?" first, then signs out
     });
 
     async function authFetch(url, options = {}) {
@@ -16,7 +15,17 @@ document.addEventListener('DOMContentLoaded', function () {
             'Authorization': 'Bearer ' + token
         });
         const response = await fetch(url, options);
-        const data = await response.json();
+
+        let data;
+        try {
+            data = await response.json();
+        } catch (e) {
+            // The server answered with something that isn't JSON (for example an
+            // HTML "Cannot GET" page) - usually means the backend isn't running
+            // the latest server.js yet.
+            throw new Error('The server did not answer correctly (status ' + response.status + '). Make sure the backend is running the latest server.js.');
+        }
+
         if (!response.ok) throw new Error(data.error || 'Something went wrong.');
         return data;
     }
@@ -40,10 +49,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function loadProfile() {
-        const user = await authFetch(API_BASE_URL + '/me');
-        document.getElementById('user-name').textContent = user.username;
-        document.getElementById('username').value = user.username;
-        renderAvatar(user.photo);
+        try {
+            const user = await authFetch(API_BASE_URL + '/me');
+            document.getElementById('user-name').textContent = user.username;
+            document.getElementById('username').value = user.username;
+            renderAvatar(user.photo);
+        } catch (err) {
+            // Show the problem on the page instead of failing silently
+            showBanner('Could not load your profile: ' + err.message, 'error');
+        }
     }
 
     loadProfile();
