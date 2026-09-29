@@ -32,3 +32,46 @@ function getPayload(token) {
     return null;
   }
 }
+
+// Shows an "Are you sure?" popup before logging out. Every page's logout
+// button calls this instead of signing out straight away.
+function confirmLogout() {
+  let overlay = document.getElementById('logout-confirm-overlay');
+
+  // Build the popup the first time it's needed, then just re-show it after that.
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'logout-confirm-overlay';
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="logout-confirm-text">' +
+        '<p id="logout-confirm-text">Are you sure you want to log out?</p>' +
+        '<div class="confirm-actions">' +
+          '<button type="button" class="confirm-btn confirm-btn-yes" id="logout-confirm-yes">Yes</button>' +
+          '<button type="button" class="confirm-btn confirm-btn-no" id="logout-confirm-no">No</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    const closePopup = function () {
+      overlay.classList.remove('open');
+    };
+
+    // "No", tapping the dimmed area outside the box, or pressing Escape all just close it.
+    overlay.querySelector('#logout-confirm-no').addEventListener('click', closePopup);
+    overlay.addEventListener('click', function (event) {
+      if (event.target === overlay) closePopup();
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') closePopup();
+    });
+
+    // "Yes" is the only path that actually signs you out.
+    overlay.querySelector('#logout-confirm-yes').addEventListener('click', function () {
+      clearToken();
+      window.location.href = 'index.html';
+    });
+  }
+
+  overlay.classList.add('open');
+}

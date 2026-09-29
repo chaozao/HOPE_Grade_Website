@@ -63,48 +63,60 @@
 
       <div class="settings-banner" id="form-banner" hidden></div>
 
-      <section class="settings-card">
-        <h2>Profile photo</h2>
-        <div class="avatar-upload">
-          <div class="avatar-preview" id="avatar-preview">
-            <i class="bi bi-person-fill"></i>
-          </div>
-          <div class="avatar-upload-actions">
-            <label class="btn-secondary" for="photo-input">Choose photo</label>
-            <input type="file" id="photo-input" accept="image/*">
-            <p class="field-hint">JPG or PNG, up to 2MB.</p>
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="photo">Photo</button>
+        <button class="settings-tab" data-tab="name">Name</button>
+        <button class="settings-tab" data-tab="password">Password</button>
+      </div>
+
+      <section class="settings-panel" id="tab-photo">
+        <div class="settings-card">
+          <h2>Profile photo</h2>
+          <div class="avatar-upload">
+            <div class="avatar-preview" id="avatar-preview">
+              <i class="bi bi-person-fill"></i>
+            </div>
+            <div class="avatar-upload-actions">
+              <label class="btn-secondary" for="photo-input">Choose photo</label>
+              <input type="file" id="photo-input" accept="image/*">
+              <p class="field-hint">JPG or PNG, up to 2MB.</p>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="settings-card">
-        <h2>Name</h2>
-        <form id="name-form">
-          <div class="field">
-            <label for="username">Display name</label>
-            <input type="text" id="username" required>
-          </div>
-          <button type="submit" class="btn-primary">Save name</button>
-        </form>
+      <section class="settings-panel hidden" id="tab-name">
+        <div class="settings-card">
+          <h2>Name</h2>
+          <form id="name-form">
+            <div class="field">
+              <label for="username">Display name</label>
+              <input type="text" id="username" required>
+            </div>
+            <button type="submit" class="btn-primary">Save name</button>
+          </form>
+        </div>
       </section>
 
-      <section class="settings-card">
-        <h2>Password</h2>
-        <form id="password-form">
-          <div class="field">
-            <label for="current-password">Current password</label>
-            <input type="password" id="current-password" required>
-          </div>
-          <div class="field">
-            <label for="new-password">New password</label>
-            <input type="password" id="new-password" required minlength="8">
-          </div>
-          <div class="field">
-            <label for="confirm-new-password">Confirm new password</label>
-            <input type="password" id="confirm-new-password" required minlength="8">
-          </div>
-          <button type="submit" class="btn-primary">Change password</button>
-        </form>
+      <section class="settings-panel hidden" id="tab-password">
+        <div class="settings-card">
+          <h2>Password</h2>
+          <form id="password-form">
+            <div class="field">
+              <label for="current-password">Current password</label>
+              <input type="password" id="current-password" required>
+            </div>
+            <div class="field">
+              <label for="new-password">New password</label>
+              <input type="password" id="new-password" required minlength="8">
+            </div>
+            <div class="field">
+              <label for="confirm-new-password">Confirm new password</label>
+              <input type="password" id="confirm-new-password" required minlength="8">
+            </div>
+            <button type="submit" class="btn-primary">Change password</button>
+          </form>
+        </div>
       </section>
     </main>
   </div>

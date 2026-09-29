@@ -6,6 +6,19 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
+    // This page is shared by teachers and admins. profile.html contains the
+    // TEACHER sidebar, so if an admin is signed in, swap in the admin menu
+    // (these links go back to the matching tab on the admin page).
+    const payload = getPayload(token); // from auth.js
+    if (payload && payload.role === 'admin') {
+        document.querySelector('.sidebar-nav').innerHTML =
+            '<a href="admin-dashboard.html#teachers" class="nav-item"><i class="bi bi-people-fill"></i><span>Teachers</span></a>' +
+            '<a href="admin-dashboard.html#classes" class="nav-item"><i class="bi bi-diagram-3-fill"></i><span>Classes</span></a>' +
+            '<a href="admin-dashboard.html#subjects" class="nav-item"><i class="bi bi-journal-bookmark-fill"></i><span>Subjects</span></a>';
+        document.querySelector('.user-role').textContent = 'Super Admin';
+        document.querySelector('.user-avatar').innerHTML = '<i class="bi bi-shield-lock-fill"></i>';
+    }
+
     document.getElementById('logout-btn').addEventListener('click', function () {
         confirmLogout(); // from auth.js — asks "Are you sure?" first, then signs out
     });
@@ -61,6 +74,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     loadProfile();
+
+    // ---------- Tab switching ----------
+    const tabs = document.querySelectorAll('.settings-tab');
+    const panels = document.querySelectorAll('.settings-panel');
+
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            tabs.forEach(function (t) { t.classList.remove('active'); });
+            tab.classList.add('active');
+
+            panels.forEach(function (p) { p.classList.add('hidden'); });
+            document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
+        });
+    });
 
     // ---------- Photo upload ----------
     document.getElementById('photo-input').addEventListener('change', async function () {
