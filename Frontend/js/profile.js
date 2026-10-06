@@ -134,11 +134,12 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
 
         const currentPassword = document.getElementById('current-password').value;
-        const newPassword = document.getElementById('new-password').value;
-        const confirmNewPassword = document.getElementById('confirm-new-password').value;
+        const newPassword = document.getElementById('new-password').value.trim();
+        const confirmNewPassword = document.getElementById('confirm-new-password').value.trim();
 
-        if (newPassword !== confirmNewPassword) {
-            showBanner('New passwords do not match.', 'error');
+        const validationError = validateNewPassword(newPassword, confirmNewPassword); // from auth.js
+        if (validationError) {
+            showBanner(validationError, 'error');
             return;
         }
 

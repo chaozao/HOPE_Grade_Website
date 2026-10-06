@@ -20,10 +20,17 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     async function authFetch(url, options = {}) {
-        options.headers = Object.assign({}, options.headers, {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': 'application/json'
-        });
+        const headers = { 'Authorization': 'Bearer ' + token };
+
+        // Every existing call in this file sends JSON, so Content-Type stays
+        // forced to that by default - EXCEPT a photo upload (FormData), which
+        // needs the browser to set its own multipart boundary automatically.
+        // Forcing "application/json" on that request would silently break it.
+        if (!(options.body instanceof FormData)) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        options.headers = Object.assign({}, options.headers, headers);
         const response = await fetch(url, options);
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Something went wrong.');
@@ -43,6 +50,13 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('tab-' + btn.dataset.tab).classList.remove('hidden');
         });
     });
+
+    // Arriving from another page (like the profile page) with #classes or
+    // #subjects in the address? Open that tab instead of the default one.
+    const wantedTab = window.location.hash.replace('#', '');
+    if (['teachers', 'classes', 'subjects'].includes(wantedTab)) {
+        document.querySelector('.nav-item[data-tab="' + wantedTab + '"]').click();
+    }
 
     // ---------- LOAD TEACHERS ----------
     async function loadTeachers() {
@@ -195,8 +209,112 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // ---------- MY PROFILE TAB: sub-tab switching (Photo / Name / Password) ----------
+    const settingsTabs = document.querySelectorAll('.settings-tab');
+    const settingsPanels = document.querySelectorAll('.settings-panel');
+
+    settingsTabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            settingsTabs.forEach(function (t) { t.classList.remove('active'); });
+            tab.classList.add('active');
+
+            settingsPanels.forEach(function (p) { p.classList.add('hidden'); });
+            document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
+        });
+    });
+
+    function showProfileBanner(message, type) {
+        const banner = document.getElementById('profile-form-banner');
+        banner.textContent = message;
+        banner.className = 'settings-banner ' + (type === 'success' ? 'settings-banner-success' : 'settings-banner-error');
+        banner.hidden = false;
+    }
+
+    function renderAvatar(photoPath) {
+        const avatarPreview = document.getElementById('avatar-preview');
+        if (photoPath) {
+            avatarPreview.innerHTML = '<img src="' + API_BASE_URL + photoPath + '" alt="Profile photo">';
+        } else {
+            avatarPreview.innerHTML = '<i class="bi bi-person-fill"></i>';
+        }
+    }
+
+    async function loadOwnProfile() {
+        try {
+            const me = await authFetch(API_BASE_URL + '/me');
+            document.getElementById('username').value = me.username;
+            renderAvatar(me.photo);
+        } catch (err) {
+            showProfileBanner('Could not load your profile: ' + err.message, 'error');
+        }
+    }
+
+    document.getElementById('photo-input').addEventListener('change', async function () {
+        const file = this.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('photo', file);
+
+        try {
+            const me = await authFetch(API_BASE_URL + '/me/photo', {
+                method: 'POST',
+                body: formData
+                // No Content-Type header here on purpose - the browser sets the
+                // correct multipart boundary automatically for FormData uploads.
+                // authFetch always adds one, so we remove it again for this request only.
+            });
+            renderAvatar(me.photo);
+            showProfileBanner('Profile photo updated.', 'success');
+        } catch (err) {
+            showProfileBanner(err.message, 'error');
+        }
+    });
+
+    document.getElementById('name-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value.trim();
+
+        try {
+            const me = await authFetch(API_BASE_URL + '/me', {
+                method: 'PUT',
+                body: JSON.stringify({ username })
+            });
+            document.getElementById('username').value = me.username;
+            showProfileBanner('Name updated. Other pages will show it after you next sign in.', 'success');
+        } catch (err) {
+            showProfileBanner(err.message, 'error');
+        }
+    });
+
+    document.getElementById('password-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const currentPassword = document.getElementById('current-password').value;
+        const newPassword = document.getElementById('new-password').value.trim();
+        const confirmNewPassword = document.getElementById('confirm-new-password').value.trim();
+
+        const validationError = validateNewPassword(newPassword, confirmNewPassword); // from auth.js
+        if (validationError) {
+            showProfileBanner(validationError, 'error');
+            return;
+        }
+
+        try {
+            await authFetch(API_BASE_URL + '/me/password', {
+                method: 'PUT',
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            showProfileBanner('Password changed successfully.', 'success');
+            e.target.reset();
+        } catch (err) {
+            showProfileBanner(err.message, 'error');
+        }
+    });
+
     // ---------- INITIAL LOAD ----------
     loadTeachers();
     loadClasses();
     loadSubjects();
+    loadOwnProfile();
 });

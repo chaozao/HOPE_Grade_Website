@@ -116,7 +116,10 @@ app.post('/login', async (req, res) => {
     const { email, password, remember } = req.body;
 
     // 1. Find the user by their email
-    const user = await User.findOne({ email });
+    // .select('+password') is needed here because the schema now hides the
+    // password field by default (see User.js) - this route is one of the
+    // few that genuinely needs to read the hash, to compare it below.
+    const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
       return res.status(400).json({ error: 'Invalid email or password.' });
@@ -264,7 +267,7 @@ app.put('/me', verifyToken, async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.userId,
       { username: username.trim() },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).select('-password -resetTokenHash -resetTokenExpiry');
 
     res.json(user);
@@ -285,7 +288,7 @@ app.post('/me/photo', verifyToken, avatarUpload.single('photo'), async (req, res
     const user = await User.findByIdAndUpdate(
       req.user.userId,
       { photo: photoPath },
-      { new: true }
+      { returnDocument: 'after' }
     ).select('-password -resetTokenHash -resetTokenExpiry');
 
     res.json(user);
@@ -299,18 +302,55 @@ app.put('/me/password', verifyToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+    // ---------- Sanitization ----------
+    // Reject anything that isn't a plain string outright (e.g. someone
+    // sending {"$ne": null} or an array instead of text) before it gets
+    // anywhere near a database query or bcrypt.
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+      return res.status(400).json({ error: 'Invalid request.' });
     }
 
-    const user = await User.findById(req.user.userId);
+    // Trim the NEW password only - stray whitespace pasted in by accident
+    // shouldn't become part of a brand new credential. The CURRENT password
+    // is deliberately left exactly as typed, so it's checked against
+    // whatever is actually stored, whitespace and all.
+    const trimmedNewPassword = newPassword.trim();
+
+    // ---------- Validation ----------
+    if (!currentPassword) {
+      return res.status(400).json({ error: 'Current password is required.' });
+    }
+    if (trimmedNewPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+    }
+    // bcrypt silently ignores anything past 72 characters - rejecting a
+    // longer password here is more honest than letting someone believe
+    // the extra length is adding protection when it quietly isn't.
+    if (trimmedNewPassword.length > 72) {
+      return res.status(400).json({ error: 'New password must be 72 characters or fewer.' });
+    }
+    if (!/[A-Za-z]/.test(trimmedNewPassword) || !/[0-9]/.test(trimmedNewPassword)) {
+      return res.status(400).json({ error: 'New password must include at least one letter and one number.' });
+    }
+
+    // .select('+password') is required here since the schema hides this
+    // field by default now (see User.js) - this route is one of the few
+    // that legitimately needs to read the hash, to compare it below.
+    const user = await User.findById(req.user.userId).select('+password');
     const isMatch = await bcrypt.compare(currentPassword, user.password);
 
     if (!isMatch) {
       return res.status(400).json({ error: 'Current password is incorrect.' });
     }
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    const isSameAsBefore = await bcrypt.compare(trimmedNewPassword, user.password);
+    if (isSameAsBefore) {
+      return res.status(400).json({ error: 'New password must be different from your current password.' });
+    }
+
+    user.password = await bcrypt.hash(trimmedNewPassword, 10);
+    user.resetTokenHash = null;
+    user.resetTokenExpiry = null;
     await user.save();
 
     res.json({ message: 'Password updated successfully.' });
@@ -591,7 +631,7 @@ app.put('/teacher/subjects/:id/grades', verifyToken, requireRole('teacher'), asy
       await Grade.findOneAndUpdate(
         { student: entry.studentId, subject: subject._id },
         { scores: entry.scores },
-        { upsert: true, new: true, runValidators: true }
+        { upsert: true, returnDocument: 'after', runValidators: true }
       );
     }
 

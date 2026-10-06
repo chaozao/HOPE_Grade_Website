@@ -25,6 +25,26 @@ function clearToken() {
   sessionStorage.removeItem('token');
 }
 
+// Checks a new password against the site's rules before it's even sent to
+// the server - the server enforces the same rule independently and is the
+// real authority, but this gives the person a faster, friendlier answer.
+// Returns an error message to display, or null if everything looks fine.
+function validateNewPassword(newPassword, confirmNewPassword) {
+  if (newPassword.length < 8) {
+    return 'New password must be at least 8 characters.';
+  }
+  if (newPassword.length > 72) {
+    return 'New password must be 72 characters or fewer.';
+  }
+  if (!/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+    return 'New password must include at least one letter and one number.';
+  }
+  if (newPassword !== confirmNewPassword) {
+    return 'New passwords do not match.';
+  }
+  return null;
+}
+
 function getPayload(token) {
   try {
     return JSON.parse(atob(token.split('.')[1]));
