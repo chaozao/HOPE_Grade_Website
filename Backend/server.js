@@ -9,31 +9,58 @@ const nodemailer = require('nodemailer'); // npm install nodemailer
 const multer = require('multer');         // npm install multer — handles the photo upload
 const path = require('path');             // built into Node — no install needed
 const fs = require('fs');                 // built into Node — no install needed
+const os = require('os');                 // built into Node — no install needed
 const User = require('./models/User');
 const Class = require('./models/Class');
 const Subject = require('./models/Subject');
 const Student = require('./models/Student');
 const Grade = require('./models/Grade');
+const { syncTeacherRoles, requireTeacher, validateId, invalid } = require('./services/teacher-roles');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ---------- Only allow requests from this specific Wi-Fi network ----------
-// Your Wi-Fi's ipconfig showed address 172.16.4.229 with subnet mask 255.255.192.0,
-// which means every device on this same Wi-Fi gets an address somewhere between
-// 172.16.0.1 and 172.16.63.254. Anything outside that range gets rejected below -
-// including someone trying to reach this server from a different network entirely.
+// ---------- Only allow requests from the same Wi-Fi network as this server ----------
+// This used to hardcode one Wi-Fi's address range, which broke the moment the
+// computer joined a different network. Now it asks the computer running this
+// server which network(s) it is connected to RIGHT NOW, and only lets in
+// devices on one of those same networks. Move to another Wi-Fi and it adapts
+// by itself - nothing here needs editing. Devices outside (a different network,
+// or anyone on the internet) are still rejected.
+
+// Turns "192.168.1.30" into one plain number, so addresses can be compared.
+function ipToNumber(ip) {
+  return ip.split('.').reduce(function (total, octet) {
+    return (total << 8) + Number(octet);
+  }, 0) >>> 0;
+}
+
 function isOnAllowedNetwork(ip) {
+  if (!ip) return false;
+
   // Requests made from this same computer look like these - always allow those.
   if (ip === '::1' || ip === '127.0.0.1' || ip === '::ffff:127.0.0.1') return true;
 
   const cleaned = ip.replace('::ffff:', ''); // Node sometimes adds this prefix to IPv4 addresses
-  const parts = cleaned.split('.').map(Number);
-  if (parts.length !== 4) return false;
+  if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(cleaned)) return false;
 
-  const [a, b, c] = parts;
-  return a === 172 && b === 16 && c >= 0 && c <= 63;
+  const clientNumber = ipToNumber(cleaned);
+  const interfaces = os.networkInterfaces();
+
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      const isIPv4 = iface.family === 'IPv4' || iface.family === 4;
+      if (!isIPv4 || iface.internal) continue;
+
+      // A device is on the same network when, after hiding the "host" part
+      // of both addresses with the subnet mask, what's left is identical.
+      const mask = ipToNumber(iface.netmask);
+      if ((clientNumber & mask) === (ipToNumber(iface.address) & mask)) return true;
+    }
+  }
+
+  return false;
 }
 
 app.use(function (req, res, next) {
@@ -138,8 +165,10 @@ app.post('/login', async (req, res) => {
 
   // 3. Create the "wristband" (JWT token) - now includes the role! 
   // Checked "remember me"? Give it a much longer expiry (30 days) instead of 1 hour.
+  // Resolve the workspace before returning login, so the browser opens it directly.
+  const isAdviser = user.role === 'teacher' && Boolean(await Class.exists({ adviser: user._id }));
   const token = jwt.sign(
-    { userId: user._id, username: user.username, role: user.role },
+    { userId: user._id, username: user.username, role: user.role, isAdviser },
     process.env.JWT_SECRET,
     { expiresIn: remember ? '30d' : '1h' }
   );
@@ -375,6 +404,10 @@ app.get('/admin/teachers', verifyToken, requireRole('admin'), async (req, res) =
           email: teacher.email,
           isActive: teacher.isActive,
           advisoryClass: advisoryClass ? advisoryClass.name : null,
+          advisoryClassId: advisoryClass ? advisoryClass._id : null,
+          subjectIds: subjectsTaught.map((s) => s._id),
+          // Derive these for older accounts whose teacherRoles have not been saved yet.
+          teacherRoles: [advisoryClass && 'class-advisor', subjectsTaught.length && 'subject-teacher'].filter(Boolean),
           subjectsTaught: subjectsTaught.map((s) => s.name)
         };
       })
@@ -402,6 +435,8 @@ app.post('/admin/teachers', verifyToken, requireRole('admin'), async (req, res) 
   }
 });
 
+app.use('/admin/teachers', require('./routes/teacher-roles'));
+
 // Toggle a teacher's active/deactivated status
 app.patch('/admin/teachers/:id/deactivate', verifyToken, requireRole('admin'), async (req, res) => {
   try {
@@ -424,10 +459,17 @@ app.patch('/admin/teachers/:id/deactivate', verifyToken, requireRole('admin'), a
 // Create a new class and assign its adviser
 app.post('/admin/classes', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    const { name, adviserId } = req.body;
-
-    const newClass = new Class({ name, adviser: adviserId });
-    await newClass.save();
+    const { name, adviserId, gradeLevel, section } = req.body;
+    let newClass;
+    await mongoose.connection.transaction(async session => {
+      if (adviserId) {
+        await requireTeacher(adviserId, session);
+        if (await Class.exists({ adviser: adviserId }).session(session)) invalid('This teacher already has a homeroom. Change it through Assign Roles.', 409);
+      }
+      newClass = new Class({ name, adviser: adviserId || null, gradeLevel: gradeLevel || '', section: section || '' });
+      await newClass.save({ session });
+      await syncTeacherRoles(adviserId, session);
+    });
 
     res.json({ message: `Class "${name}" created.`, class: newClass });
   } catch (error) {
@@ -448,14 +490,10 @@ app.get('/admin/classes', verifyToken, requireRole('admin'), async (req, res) =>
 // Create a new subject and assign its teacher
 app.post('/admin/subjects', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    const { name, classId, teacherId } = req.body;
-
-    const newSubject = new Subject({ name, class: classId, teacher: teacherId });
-    await newSubject.save();
-
-    res.json({ message: `Subject "${name}" assigned.`, subject: newSubject });
+    const result = await require('./services/section-subjects').save(req.user, req.body.classId, null, req.body);
+    res.json({ message: 'Subject assigned.', ...result });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not create subject.' });
   }
 });
 
@@ -471,251 +509,5 @@ app.get('/admin/subjects', verifyToken, requireRole('admin'), async (req, res) =
   }
 });
 
-// A Class Adviser views THEIR OWN class: roster + subjects + subject teachers
-app.get('/adviser/my-class', verifyToken, requireRole('teacher'), async (req, res) => {
-  try {
-    const myClass = await Class.findOne({ adviser: req.user.userId });
-
-    if (!myClass) {
-      return res.status(404).json({ error: 'You are not currently assigned as a Class Adviser.' });
-    }
-
-    const students = await Student.find({ class: myClass._id })
-      .collation({ locale: 'en', strength: 2 })
-      .sort({ lastName: 1, firstName: 1 });
-
-    const subjects = await Subject.find({ class: myClass._id }).populate('teacher', 'username email');
-
-    res.json({ class: myClass, students, subjects });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: 'Something went wrong.' });
-  }
-});
-
-// A Class Adviser adds a student - ALWAYS goes into their own class, never someone else's
-app.post('/adviser/students', verifyToken, requireRole('teacher'), async (req, res) => {
-  try {
-    const myClass = await Class.findOne({ adviser: req.user.userId });
-
-    if (!myClass) {
-      return res.status(403).json({ error: 'You are not a Class Adviser.' });
-    }
-
-    const { lastName, firstName, middleInitial, gender } = req.body;
-
-    const newStudent = new Student({
-      lastName,
-      firstName,
-      middleInitial,
-      gender,
-      class: myClass._id  // forced - can't add students to a class you don't advise
-    });
-    await newStudent.save();
-
-    res.json({ message: `Student "${firstName} ${lastName}" added to ${myClass.name}.`, student: newStudent });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// A Subject Teacher sees all subjects THEY teach
-app.get('/teacher/my-subjects', verifyToken, requireRole('teacher'), async (req, res) => {
-  try {
-    const subjects = await Subject.find({ teacher: req.user.userId }).populate('class', 'name');
-
-    const subjectsWithCounts = await Promise.all(
-      subjects.map(async (subject) => {
-        const studentCount = await Student.countDocuments({ class: subject.class._id });
-        return {
-          _id: subject._id,
-          name: subject.name,
-          className: subject.class.name,
-          classId: subject.class._id,
-          studentCount
-        };
-      })
-    );
-
-    res.json(subjectsWithCounts);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: 'Something went wrong fetching your subjects.' });
-  }
-});
-
-// Small helper: turns 4 raw scores into a weighted percentage (or null if incomplete)
-function computeWeightedGrade(scores) {
-  const { hw1, quiz1, midterm, project1 } = scores;
-
-  if (hw1 == null || quiz1 == null || midterm == null || project1 == null) {
-    return null; // not fully graded yet
-  }
-
-  const weightedSum = (hw1 * 0.15) + (quiz1 * 0.20) + (midterm * 0.30) + (project1 * 0.15);
-  return Number((weightedSum / 0.80).toFixed(1));
-}
-
-// A Subject Teacher sees the roster + current grades for ONE of their subjects
-app.get('/teacher/subjects/:id/roster', verifyToken, requireRole('teacher'), async (req, res) => {
-  try {
-    const subject = await Subject.findById(req.params.id);
-
-    if (!subject) {
-      return res.status(404).json({ error: 'Subject not found.' });
-    }
-
-    // Security check - can this teacher actually see THIS subject?
-    if (subject.teacher.toString() !== req.user.userId) {
-      return res.status(403).json({ error: 'This is not your subject.' });
-    }
-
-    const students = await Student.find({ class: subject.class })
-      .collation({ locale: 'en', strength: 2 })
-      .sort({ lastName: 1, firstName: 1 });
-
-    const roster = await Promise.all(
-      students.map(async (student) => {
-        let grade = await Grade.findOne({ student: student._id, subject: subject._id });
-
-        if (!grade) {
-          // No grade record yet - create an empty one so the frontend has something to show/edit
-          grade = await Grade.create({ student: student._id, subject: subject._id, scores: {} });
-        }
-
-        return {
-          studentId: student._id,
-          lastName: student.lastName,
-          firstName: student.firstName,
-          scores: grade.scores,
-          weightedGrade: computeWeightedGrade(grade.scores)
-        };
-      })
-    );
-
-    const gradedCount = roster.filter((r) => r.weightedGrade !== null).length;
-    const passingCount = roster.filter((r) => r.weightedGrade !== null && r.weightedGrade >= 75).length;
-    const classAverage = gradedCount > 0
-      ? Number((roster.reduce((sum, r) => sum + (r.weightedGrade || 0), 0) / gradedCount).toFixed(1))
-      : null;
-
-    res.json({
-      subjectName: subject.name,
-      totalStudents: roster.length,
-      classAverage,
-      passingRate: gradedCount > 0 ? Number(((passingCount / gradedCount) * 100).toFixed(1)) : null,
-      roster
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: 'Something went wrong fetching the roster.' });
-  }
-});
-
-// A Subject Teacher saves grades for their own subject
-app.put('/teacher/subjects/:id/grades', verifyToken, requireRole('teacher'), async (req, res) => {
-  try {
-    const subject = await Subject.findById(req.params.id);
-
-    if (!subject) {
-      return res.status(404).json({ error: 'Subject not found.' });
-    }
-
-    if (subject.teacher.toString() !== req.user.userId) {
-      return res.status(403).json({ error: 'This is not your subject.' });
-    }
-
-    const { grades } = req.body; // array of { studentId, scores: { hw1, quiz1, midterm, project1 } }
-
-    for (const entry of grades) {
-      await Grade.findOneAndUpdate(
-        { student: entry.studentId, subject: subject._id },
-        { scores: entry.scores },
-        { upsert: true, returnDocument: 'after', runValidators: true }
-      );
-    }
-
-    res.json({ message: 'Grades saved successfully.' });
-  } catch (error) {
-    console.log(error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-app.get('/teacher/subjects/:id/insights', verifyToken, requireRole('teacher'), async (req, res) => {
-  try {
-    const subject = await Subject.findById(req.params.id).populate('class', 'name');
-
-    if (!subject) {
-      return res.status(404).json({ error: 'Subject not found.' });
-    }
-
-    if (subject.teacher.toString() !== req.user.userId) {
-      return res.status(403).json({ error: 'This is not your subject.' });
-    }
-
-    const students = await Student.find({ class: subject.class._id })
-      .collation({ locale: 'en', strength: 2 })
-      .sort({ lastName: 1, firstName: 1 });
-
-    const distribution = { A: 0, B: 0, C: 0, F: 0, notGraded: 0 };
-    const atRisk = [];
-    const componentSums = { hw1: 0, quiz1: 0, midterm: 0, project1: 0 };
-    const componentCounts = { hw1: 0, quiz1: 0, midterm: 0, project1: 0 };
-
-    for (const student of students) {
-      let grade = await Grade.findOne({ student: student._id, subject: subject._id });
-      const scores = grade ? grade.scores : {};
-
-      ['hw1', 'quiz1', 'midterm', 'project1'].forEach(function (field) {
-        if (scores[field] != null) {
-          componentSums[field] += scores[field];
-          componentCounts[field] += 1;
-        }
-      });
-
-      const weighted = computeWeightedGrade(scores);
-
-      if (weighted === null) {
-        distribution.notGraded += 1;
-      } else if (weighted >= 90) {
-        distribution.A += 1;
-      } else if (weighted >= 80) {
-        distribution.B += 1;
-      } else if (weighted >= 75) {
-        distribution.C += 1;
-      } else {
-        distribution.F += 1;
-      }
-
-      if (weighted !== null && weighted < 75) {
-        atRisk.push({
-          studentId: student._id,
-          name: student.firstName + ' ' + student.lastName,
-          weightedGrade: weighted
-        });
-      }
-    }
-
-    const componentAverages = {};
-    ['hw1', 'quiz1', 'midterm', 'project1'].forEach(function (field) {
-      componentAverages[field] = componentCounts[field] > 0
-        ? Number((componentSums[field] / componentCounts[field]).toFixed(1))
-        : null;
-    });
-
-    atRisk.sort(function (a, b) { return a.weightedGrade - b.weightedGrade; });
-
-    res.json({
-      subjectName: subject.name,
-      className: subject.class.name,
-      totalStudents: students.length,
-      distribution,
-      componentAverages,
-      atRisk
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: 'Something went wrong generating insights.' });
-  }
-});
+app.use(require('./routes/academic'));
+app.use('/section-subjects', require('./routes/section-subjects'));

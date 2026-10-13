@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/dashboard.css">
   <link rel="stylesheet" href="css/admin-dashboard.css">
   <link rel="stylesheet" href="css/profile.css">
+  <link rel="stylesheet" href="css/section-subjects.css">
 </head>
 <body>
   <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
@@ -63,19 +64,24 @@
             <h1>Teachers</h1>
             <p class="content-subtitle">Manage teacher accounts, advisories, and access.</p>
           </div>
-          <button class="btn-primary" id="open-add-teacher"><i class="bi bi-plus-lg"></i> Add teacher</button>
+          <div class="teacher-actions">
+            <button class="btn-secondary" id="open-assign-roles"><i class="bi bi-person-check"></i> Assign Roles</button>
+            <button class="btn-primary" id="open-add-teacher"><i class="bi bi-plus-lg"></i> Add teacher</button>
+          </div>
         </header>
-
-        <section class="grades-table-section">
-          <table class="grades-table">
+        <p id="teacher-status" class="assignment-status" role="status" hidden></p>
+        <button type="button" id="retry-teachers" class="btn-secondary" hidden>Retry loading tables</button>
+        <section class="grades-table-section teacher-table-section" tabindex="0" aria-label="Teachers and their assignments">
+          <table class="grades-table teacher-table">
             <thead>
               <tr>
                 <th>Username</th>
                 <th>Email</th>
-                <th>Advisory class</th>
-                <th>Subjects taught</th>
+                <th>Roles</th>
+                <th>Homeroom</th>
+                <th>Teaching Assignments</th>
                 <th>Status</th>
-                <th></th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="teachers-tbody"></tbody>
@@ -100,6 +106,7 @@
                 <th>Class name</th>
                 <th>Adviser</th>
                 <th>Adviser email</th>
+                <th>Subjects &amp; teachers</th>
               </tr>
             </thead>
             <tbody id="classes-tbody"></tbody>
@@ -203,6 +210,40 @@
     </main>
   </div>
 
+  <!-- MODAL: Assign Roles -->
+  <div class="modal-overlay hidden" id="modal-assign-roles">
+    <div class="modal roles-modal" role="dialog" aria-modal="true" aria-labelledby="assign-roles-title" aria-describedby="assign-roles-help">
+      <h2 id="assign-roles-title">Assign Roles</h2>
+      <p class="assignment-hint" id="assign-roles-help">Choose a teacher and one or both roles. Unchecking a role removes its assignments when you save.</p>
+      <p class="assignment-status" id="roles-status" role="status" hidden></p>
+      <button type="button" class="btn-secondary" id="retry-roles" hidden>Reload assignments</button>
+      <form id="form-assign-roles">
+        <fieldset id="roles-fields" disabled>
+          <div class="field"><label for="roles-teacher">Teacher</label><select id="roles-teacher" required></select></div>
+          <div class="role-section">
+            <label class="role-choice"><input type="checkbox" id="role-advisor"> <span>Class Advisor</span></label>
+            <div class="field" id="advisor-assignment" hidden>
+              <label for="roles-homeroom">Homeroom</label>
+              <select id="roles-homeroom"></select>
+            </div>
+          </div>
+          <div class="role-section">
+            <label class="role-choice"><input type="checkbox" id="role-subject-teacher"> <span>Subject Teacher</span></label>
+            <div id="subject-assignments" hidden>
+              <p class="assignment-hint">Select the subjects this teacher will teach. The Class menu appears for advisors with at least one teaching subject.</p>
+              <div id="roles-subjects" class="subject-choices"></div>
+            </div>
+          </div>
+          <p class="assignment-hint">Classes and subjects assigned to another teacher are unavailable. Remove the previous assignment first. Create missing classes or subjects from their sidebar menus.</p>
+        </fieldset>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancel-roles">Cancel</button>
+          <button type="submit" class="btn-primary" id="save-roles" disabled>Save roles</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: Add Teacher -->
   <div class="modal-overlay hidden" id="modal-add-teacher">
     <div class="modal">
@@ -217,8 +258,11 @@
           <input type="email" id="new-teacher-email" required>
         </div>
         <div class="field">
-          <label>Temporary password</label>
-          <input type="text" id="new-teacher-password" required>
+          <label for="new-teacher-password">Temporary password</label>
+          <div class="teacher-password-field">
+            <input type="password" id="new-teacher-password" autocomplete="new-password" required>
+            <button type="button" class="teacher-password-toggle" id="toggle-teacher-password" aria-label="Show password" aria-controls="new-teacher-password" aria-pressed="false"><i class="bi bi-eye-slash-fill" aria-hidden="true"></i></button>
+          </div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn-secondary modal-cancel">Cancel</button>
@@ -237,9 +281,11 @@
           <label>Class name</label>
           <input type="text" id="new-class-name" placeholder="e.g. Grade 10 - Diamond" required>
         </div>
+        <div class="field"><label for="new-class-grade-level">Grade level</label><input id="new-class-grade-level" maxlength="40" placeholder="e.g. Grade 10" required></div>
+        <div class="field"><label for="new-class-section">Section</label><input id="new-class-section" maxlength="100" placeholder="e.g. Diamond" required></div>
         <div class="field">
           <label>Adviser</label>
-          <select id="new-class-adviser" required></select>
+          <select id="new-class-adviser"></select>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn-secondary modal-cancel">Cancel</button>
@@ -264,7 +310,7 @@
         </div>
         <div class="field">
           <label>Teacher</label>
-          <select id="new-subject-teacher" required></select>
+          <select id="new-subject-teacher"></select>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn-secondary modal-cancel">Cancel</button>
@@ -277,6 +323,9 @@
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/sidebar-toggle.js"></script>
+  <script src="js/academic-ui.js"></script>
+  <script src="js/section-subjects.js"></script>
   <script src="js/admin-dashboard.js"></script>
+  <script src="js/admin-roles.js"></script>
 </body>
 </html>

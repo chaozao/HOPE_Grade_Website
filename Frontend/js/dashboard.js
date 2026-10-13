@@ -78,6 +78,24 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function init() {
+        try {
+            if (await getAdvisorClass(token)) {
+                window.location.replace('class-advisor.html');
+                return;
+            }
+        } catch (error) {
+            if (!getToken()) return;
+            if (workspaceHint(token)?.adviser) {
+                window.location.replace('class-advisor.html');
+                return;
+            }
+            // Keep the neutral loading screen when the role is unknown.
+            // Never interpret an unavailable assignment endpoint as subject-teacher access.
+            const status = document.querySelector('.workspace-load-state');
+            if (status) status.firstChild.textContent = 'Could not verify your workspace. Please retry. ';
+            return;
+        }
+        revealWorkspace();
         const subjects = await authFetch(API_BASE_URL + '/teacher/my-subjects');
         const select = document.getElementById('subject-select');
 
@@ -102,5 +120,9 @@ document.addEventListener('DOMContentLoaded', function () {
         loadRoster(subjects[0]._id);
     }
 
-    init();
+    init().catch(function (error) {
+        const message = document.getElementById('no-subjects-message');
+        message.textContent = 'Could not load your dashboard: ' + error.message;
+        message.classList.remove('hidden');
+    });
 });

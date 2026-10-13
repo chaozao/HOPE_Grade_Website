@@ -91,6 +91,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function init() {
         const subjects = await authFetch(API_BASE_URL + '/teacher/my-subjects');
+        configureAdvisorNavigation(token, subjects).catch(function (error) {
+            console.error('Could not load advisor navigation:', error);
+        });
         const select = document.getElementById('subject-select');
 
         if (subjects.length === 0) {
@@ -110,7 +113,9 @@ document.addEventListener('DOMContentLoaded', function () {
             loadInsights(select.value);
         });
 
-        loadInsights(subjects[0]._id);
+        const requestedSubject = new URLSearchParams(window.location.search).get('subject');
+        select.value = subjects.some(function (subject) { return subject._id === requestedSubject; }) ? requestedSubject : subjects[0]._id;
+        loadInsights(select.value);
     }
 
     init();

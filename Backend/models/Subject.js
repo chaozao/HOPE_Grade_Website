@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const subjectSchema = new mongoose.Schema({
+  gradeStatus: { type: String, enum: ['draft', 'finalized'], default: 'draft' },
+  gradeVersion: { type: Number, default: 0 },
+  workflowRevision: { type: Number, default: 0 },
+  finalizedAt: { type: Date, default: null },
+  finalizedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   name: {
     type: String,
     required: true        // e.g. "Algebra II"
@@ -13,7 +18,7 @@ const subjectSchema = new mongoose.Schema({
   teacher: {
     type: mongoose.Schema.Types.ObjectId,  // which teacher handles it
     ref: 'User',
-    required: true
+    default: null // a subject can wait for a teacher assignment
   }
 }, {
   timestamps: true

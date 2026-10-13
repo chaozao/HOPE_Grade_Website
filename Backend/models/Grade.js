@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const gradeSchema = new mongoose.Schema({
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   student: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Student',

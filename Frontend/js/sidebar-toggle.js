@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     toggleBtn.addEventListener('click', function () {
-        setOpen(!dashboard.classList.contains('sidebar-open'));
+        setOpen(!document.body.classList.contains('sidebar-open'));
     });
 
     // Tapping the dimmed background closes the drawer, same as most apps.
@@ -30,9 +30,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Picking a page from the menu should close the drawer behind you.
-    document.querySelectorAll('.nav-item').forEach(function (item) {
-        item.addEventListener('click', function () {
-            setOpen(false);
-        });
+    document.querySelector('.sidebar-nav')?.addEventListener('click', function (event) {
+        if (event.target.closest('.nav-item')) setOpen(false);
     });
 });

@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (payload && payload.role === 'admin') {
                     window.location.href = 'admin-dashboard.html';
                 } else {
-                    window.location.href = 'dashboard.html';
+                    window.location.replace(payload?.isAdviser ? 'class-advisor.html' : 'dashboard.html');
                 }
             } else {
                 showBanner(data.error || 'Invalid email or password.');
@@ -96,7 +96,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.log('Something went wrong:', error);
-            showBanner('Could not reach the server.');
+            showBanner(error instanceof TypeError
+                ? 'Cannot reach the sign-in server at ' + API_BASE_URL + '. Check that the backend is running and try again.'
+                : 'Could not complete sign in. Please try again.');
             submitBtn.disabled = false;
             submitBtn.textContent = 'Sign in';
         }

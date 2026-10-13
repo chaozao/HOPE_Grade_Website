@@ -20,6 +20,11 @@ const userSchema = new mongoose.Schema({
     enum: ['admin', 'teacher'],
     default: 'teacher'
   },
+  // Keep the account role used by authentication separate from teaching duties.
+  teacherRoles: {
+    type: [{ type: String, enum: ['class-advisor', 'subject-teacher'] }],
+    default: []
+  },
   isActive: {
     type: Boolean,
     default: true

@@ -74,6 +74,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     loadProfile();
+    if (payload && payload.role === 'teacher') {
+        configureAdvisorNavigation(token).catch(function (error) {
+            showBanner('Could not load your navigation: ' + error.message, 'error');
+        });
+    } else { revealWorkspace(); }
 
     // ---------- Tab switching ----------
     const tabs = document.querySelectorAll('.settings-tab');
@@ -130,6 +135,21 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ---------- Password form ----------
+    const passwordToggles = document.querySelectorAll('[data-password-target]');
+    function setPasswordVisible(button, visible) {
+        document.getElementById(button.dataset.passwordTarget).type = visible ? 'text' : 'password';
+        button.setAttribute('aria-label', (visible ? 'Hide ' : 'Show ') + button.dataset.passwordLabel);
+        button.setAttribute('aria-pressed', String(visible));
+        button.querySelector('i').className = visible ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill';
+    }
+    passwordToggles.forEach(function (button) {
+        button.addEventListener('click', function () {
+            setPasswordVisible(button, document.getElementById(button.dataset.passwordTarget).type === 'password');
+        });
+    });
+    document.getElementById('password-form').addEventListener('reset', function () {
+        passwordToggles.forEach(button => setPasswordVisible(button, false));
+    });
     document.getElementById('password-form').addEventListener('submit', async function (e) {
         e.preventDefault();
 

@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link rel="stylesheet" href="css/dashboard.css">
   <link rel="stylesheet" href="css/grade-entry.css">
+  <link rel="stylesheet" href="css/academic.css">
+  <script src="js/workspace-shell.js"></script>
 </head>
 <body>
   <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
@@ -64,8 +66,14 @@
           <button class="btn-primary btn-save" id="save-btn">
             <i class="bi bi-save2"></i> Save grades
           </button>
+          <button type="button" class="filter-btn" id="finalize-btn" disabled>Finalize grades</button>
+          <button type="button" class="filter-btn" id="request-edit-btn" hidden>Request edit approval</button>
+          <button type="button" class="filter-btn" id="subject-summary-btn" disabled>Subject summary</button>
         </div>
       </header>
+      <div class="workflow-toolbar"><span id="grade-state" class="workflow-badge">Loading</span><span id="grade-state-note"></span><button type="button" class="filter-btn" id="refresh-grades">Refresh grades</button></div>
+      <p id="grade-status" class="workflow-status" role="status" hidden></p>
+      <div id="grade-request-history" class="workflow-detail"></div>
 
       <div class="info-banner">
         <i class="bi bi-info-circle-fill"></i>
@@ -95,8 +103,13 @@
   </div>
 
   <script src="js/config.js"></script>
+  <dialog id="grade-action-dialog" class="workflow-dialog" aria-labelledby="grade-action-title">
+    <h2 id="grade-action-title">Finalize grades</h2><p id="grade-action-description"></p>
+    <form id="grade-action-form"><p id="grade-action-status" class="workflow-status" role="status" hidden></p><label id="grade-reason-label" hidden>Reason for correction<textarea id="grade-reason" maxlength="1000" rows="4"></textarea></label><div class="workflow-toolbar"><button type="button" class="filter-btn" id="cancel-grade-action">Cancel</button><button type="submit" class="btn-primary" id="confirm-grade-action">Confirm</button></div></form>
+  </dialog>
   <script src="js/auth.js"></script>
   <script src="js/sidebar-toggle.js"></script>
+  <script src="js/academic-ui.js"></script>
   <script src="js/grade-entry.js"></script>
 </body>
 </html>

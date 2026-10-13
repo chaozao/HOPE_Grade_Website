@@ -31,10 +31,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         options.headers = Object.assign({}, options.headers, headers);
-        const response = await fetch(url, options);
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Something went wrong.');
-        return data;
+        const controller = new AbortController();
+        const timeout = setTimeout(function () { controller.abort(); }, 15000);
+        try {
+            const response = await fetch(url, { ...options, signal: controller.signal });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Something went wrong.');
+            return data;
+        } catch (error) {
+            if (error.name === 'AbortError') throw new Error('The server took too long to respond. Please try again.');
+            throw error;
+        } finally {
+            clearTimeout(timeout);
+        }
     }
 
     // ---------- TAB SWITCHING ----------
@@ -59,32 +68,156 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ---------- LOAD TEACHERS ----------
+    let cachedTeachers = null;
+    let cachedSubjects = null;
+
+    function showTableError(message) {
+        const banner = document.getElementById('teacher-status');
+        banner.textContent = message;
+        banner.classList.add('is-error');
+        banner.hidden = false;
+        document.getElementById('retry-teachers').hidden = false;
+    }
+
     async function loadTeachers() {
-        const teachers = await authFetch(API_BASE_URL + '/admin/teachers');
+        // Accounts must render even when class/subject detail requests fail or hang.
+        try {
+            const teachers = await authFetch(API_BASE_URL + '/admin/teachers');
+            if (!Array.isArray(teachers)) throw new Error('The server returned an invalid teacher list.');
+            renderTeachers(teachers);
+            cachedTeachers = teachers;
+        } catch (error) {
+            showTableError('Could not load teacher accounts. ' + error.message + ' Use Retry loading tables to try again.');
+            if (cachedTeachers === null) {
+                const tbody = document.getElementById('teachers-tbody');
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 7;
+                cell.textContent = 'Teacher accounts could not be loaded. Please retry.';
+                row.appendChild(cell);
+                tbody.replaceChildren(row);
+            }
+        }
+    }
+
+    function renderTeachers(teachers) {
+        const assignmentsByTeacher = new Map();
+        (cachedSubjects || []).forEach(function (subject) {
+            const teacherId = subject.teacher?._id;
+            if (!teacherId) return;
+            if (!assignmentsByTeacher.has(teacherId)) assignmentsByTeacher.set(teacherId, []);
+            assignmentsByTeacher.get(teacherId).push(subject);
+        });
         const tbody = document.getElementById('teachers-tbody');
-        tbody.innerHTML = '';
+        const rows = document.createDocumentFragment();
 
         teachers.forEach(function (teacher) {
             const row = document.createElement('tr');
-            row.innerHTML =
-                '<td>' + (teacher.username || '—') + '</td>' +
-                '<td>' + teacher.email + '</td>' +
-                '<td>' + (teacher.advisoryClass || '—') + '</td>' +
-                '<td>' + (teacher.subjectsTaught.length ? teacher.subjectsTaught.join(', ') : '—') + '</td>' +
-                '<td><span class="status-pill ' + (teacher.isActive ? 'status-active' : 'status-inactive') + '">' +
-                    (teacher.isActive ? 'Active' : 'Deactivated') + '</span></td>' +
-                '<td><button class="btn-small toggle-status" data-id="' + teacher._id + '">' +
-                    (teacher.isActive ? 'Deactivate' : 'Reactivate') + '</button></td>';
-            tbody.appendChild(row);
+            function cell(text, className) {
+                const td = document.createElement('td');
+                if (text !== undefined) td.textContent = text;
+                if (className) td.className = className;
+                row.appendChild(td);
+                return td;
+            }
+            cell(teacher.username || '—', 'teacher-name');
+            cell(teacher.email, 'teacher-email');
+            const rolesCell = cell();
+            const roles = document.createElement('div');
+            roles.className = 'teacher-role-list';
+            const roleLabels = { 'class-advisor': 'Class Adviser', 'subject-teacher': 'Subject Teacher' };
+            const teacherRoles = Array.isArray(teacher.teacherRoles) ? teacher.teacherRoles :
+                [teacher.advisoryClass && 'class-advisor', teacher.subjectsTaught?.length && 'subject-teacher'].filter(Boolean);
+            teacherRoles.forEach(function (role) {
+                if (!roleLabels[role]) return;
+                const badge = document.createElement('span');
+                badge.className = 'teacher-role-badge role-' + role;
+                badge.textContent = roleLabels[role];
+                roles.appendChild(badge);
+            });
+            if (!roles.childElementCount) {
+                roles.textContent = 'Not assigned';
+                roles.classList.add('assignment-empty');
+            }
+            rolesCell.appendChild(roles);
+            cell(teacher.advisoryClass || 'Not assigned', teacher.advisoryClass ? 'teacher-homeroom' : 'assignment-empty');
+            const assignmentsCell = cell(undefined, 'teacher-assignments');
+            // The teacher response already includes subject names. Render those
+            // immediately, then enrich the rows when the subject list arrives.
+            const fallback = (Array.isArray(teacher.subjectsTaught) ? teacher.subjectsTaught : []).map(name => ({ name }));
+            const assignments = (cachedSubjects === null ? fallback : assignmentsByTeacher.get(teacher._id) || []).sort(function (a, b) {
+                return String(a.name || '').localeCompare(String(b.name || '')) || String(a.class?.name || '').localeCompare(String(b.class?.name || ''));
+            });
+            if (!assignments.length) {
+                assignmentsCell.textContent = 'Not assigned';
+                assignmentsCell.classList.add('assignment-empty');
+            } else {
+                const count = document.createElement('p');
+                count.className = 'assignment-count';
+                count.textContent = assignments.length + (assignments.length === 1 ? ' assignment' : ' assignments');
+                const list = document.createElement('ul');
+                list.className = 'teaching-assignment-list';
+                list.id = 'assignments-' + teacher._id;
+                assignments.forEach(function (assignment, index) {
+                    const item = document.createElement('li');
+                    item.hidden = index >= 2;
+                    const name = document.createElement('span');
+                    name.className = 'assignment-subject';
+                    name.textContent = assignment.name || 'Unnamed subject';
+                    const section = document.createElement('span');
+                    section.className = 'assignment-class';
+                    section.textContent = assignment.class?.name || (cachedSubjects === null ? 'Class details not loaded' : 'Class unavailable');
+                    item.append(name, section);
+                    list.appendChild(item);
+                });
+                assignmentsCell.append(count, list);
+                if (assignments.length > 2) {
+                    const toggle = document.createElement('button');
+                    toggle.type = 'button';
+                    toggle.className = 'assignment-toggle';
+                    toggle.setAttribute('aria-controls', list.id);
+                    toggle.setAttribute('aria-expanded', 'false');
+                    toggle.textContent = '+' + (assignments.length - 2) + ' more';
+                    toggle.addEventListener('click', function () {
+                        const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+                        toggle.setAttribute('aria-expanded', String(expanded));
+                        toggle.textContent = expanded ? 'Show less' : '+' + (assignments.length - 2) + ' more';
+                        list.classList.toggle('is-expanded', expanded);
+                        Array.from(list.children).forEach(function (item, index) { item.hidden = !expanded && index >= 2; });
+                    });
+                    assignmentsCell.appendChild(toggle);
+                }
+            }
+            const status = document.createElement('span');
+            status.className = 'status-pill ' + (teacher.isActive ? 'status-active' : 'status-inactive');
+            status.textContent = teacher.isActive ? 'Active' : 'Deactivated';
+            cell().appendChild(status);
+            const action = document.createElement('button');
+            action.type = 'button';
+            action.className = 'btn-small toggle-status';
+            action.dataset.id = teacher._id;
+            action.textContent = teacher.isActive ? 'Deactivate' : 'Reactivate';
+            cell().appendChild(action);
+            rows.appendChild(row);
         });
+        if (!teachers.length) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 7;
+            cell.className = 'assignment-empty';
+            cell.textContent = 'No teachers yet. Add a teacher to get started.';
+            row.appendChild(cell);
+            rows.appendChild(row);
+        }
+        tbody.replaceChildren(rows);
 
         const teacherSelect = document.getElementById('new-subject-teacher');
-        teacherSelect.innerHTML = teachers.map(function (t) {
+        teacherSelect.innerHTML = '<option value="">Assign later</option>' + teachers.map(function (t) {
             return '<option value="' + t._id + '">' + (t.username || t.email) + '</option>';
         }).join('');
 
         const adviserSelect = document.getElementById('new-class-adviser');
-        adviserSelect.innerHTML = teachers.map(function (t) {
+        adviserSelect.innerHTML = '<option value="">Assign later</option>' + teachers.filter(function (t) { return !t.advisoryClass; }).map(function (t) {
             return '<option value="' + t._id + '">' + (t.username || t.email) + '</option>';
         }).join('');
 
@@ -108,6 +241,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<td>' + cls.name + '</td>' +
                 '<td>' + (cls.adviser ? cls.adviser.username : '—') + '</td>' +
                 '<td>' + (cls.adviser ? cls.adviser.email : '—') + '</td>';
+            const action = document.createElement('td');
+            const manage = AcademicUI.button('Manage subjects', () => SectionSubjects.open(cls._id));
+            manage.className = 'btn-secondary';
+            action.appendChild(manage);
+            row.appendChild(action);
             tbody.appendChild(row);
         });
 
@@ -120,6 +258,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // ---------- LOAD SUBJECTS ----------
     async function loadSubjects() {
         const subjects = await authFetch(API_BASE_URL + '/admin/subjects');
+        if (!Array.isArray(subjects)) throw new Error('The server returned an invalid subject list.');
+        cachedSubjects = subjects;
+        if (cachedTeachers !== null) renderTeachers(cachedTeachers);
         const tbody = document.getElementById('subjects-tbody');
         tbody.innerHTML = '';
 
@@ -132,6 +273,11 @@ document.addEventListener('DOMContentLoaded', function () {
             tbody.appendChild(row);
         });
     }
+
+    document.addEventListener('section-subjects-saved', () => {
+        loadSubjects().catch(error => showTableError(error.message));
+        loadTeachers().catch(error => showTableError(error.message));
+    });
 
     // ---------- MODALS ----------
     function setupModal(openBtnId, modalId) {
@@ -147,6 +293,29 @@ document.addEventListener('DOMContentLoaded', function () {
     setupModal('open-add-teacher', 'modal-add-teacher');
     setupModal('open-add-class', 'modal-add-class');
     setupModal('open-add-subject', 'modal-add-subject');
+
+    const teacherModal = document.getElementById('modal-add-teacher');
+    const teacherPassword = document.getElementById('new-teacher-password');
+    const passwordToggle = document.getElementById('toggle-teacher-password');
+    function setTeacherPasswordVisible(visible) {
+        teacherPassword.type = visible ? 'text' : 'password';
+        passwordToggle.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+        passwordToggle.setAttribute('aria-pressed', String(visible));
+        passwordToggle.querySelector('i').className = visible ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill';
+    }
+    passwordToggle.addEventListener('click', function () {
+        setTeacherPasswordVisible(teacherPassword.type === 'password');
+    });
+    document.getElementById('open-add-teacher').addEventListener('click', function () {
+        setTeacherPasswordVisible(false);
+    });
+    teacherModal.addEventListener('click', function (event) {
+        if (event.target === teacherModal) {
+            teacherModal.classList.add('hidden');
+            setTeacherPasswordVisible(false);
+            document.getElementById('open-add-teacher').focus();
+        }
+    });
 
     // ---------- FORM: Add Teacher ----------
     document.getElementById('form-add-teacher').addEventListener('submit', async function (e) {
@@ -176,6 +345,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: JSON.stringify({
                     name: document.getElementById('new-class-name').value,
+                    gradeLevel: document.getElementById('new-class-grade-level').value.trim(),
+                    section: document.getElementById('new-class-section').value.trim(),
                     adviserId: document.getElementById('new-class-adviser').value
                 })
             });
@@ -313,8 +484,27 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ---------- INITIAL LOAD ----------
-    loadTeachers();
-    loadClasses();
-    loadSubjects();
+    document.addEventListener('teacher-roles-saved', function () {
+        Promise.all([loadTeachers(), loadClasses(), loadSubjects()]).catch(function (error) {
+            const banner = document.getElementById('teacher-status');
+            banner.textContent = 'Roles saved, but the tables could not refresh. Reload this page. ' + error.message;
+            banner.classList.add('is-error');
+            banner.hidden = false;
+        });
+    });
+    async function reloadTables() {
+        const retry = document.getElementById('retry-teachers');
+        retry.disabled = true;
+        retry.hidden = true;
+        document.getElementById('teacher-status').hidden = true;
+        await Promise.allSettled([
+            loadTeachers(),
+            loadClasses().catch(error => showTableError('Could not load class details. Teacher accounts remain available. ' + error.message)),
+            loadSubjects().catch(error => showTableError('Could not load teaching assignment details. Teacher accounts remain available. ' + error.message))
+        ]);
+        retry.disabled = false;
+    }
+    document.getElementById('retry-teachers').addEventListener('click', reloadTables);
+    reloadTables();
     loadOwnProfile();
 });

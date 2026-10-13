@@ -1,0 +1,50 @@
+[hidden], .hidden { display: none !important; }
+.main-content { min-width: 0; }
+.workflow-tabs, .workflow-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 20px; }
+.workflow-tabs { border-bottom: 1px solid var(--color-border); padding-bottom: 10px; }
+.workflow-tabs button { border: 0; background: transparent; padding: 10px 12px; border-radius: 6px; color: var(--color-muted); cursor: pointer; font: inherit; font-size: 14px; }
+.workflow-tabs button.active { background: #F5E7D4; color: #784B18; }
+.workflow-toolbar h2 { font-size: 18px; margin: 0 0 6px; }
+.workflow-toolbar > div:first-child { flex: 1; }
+.workflow-status { padding: 12px 16px; border-radius: 6px; background: #EAF2FA; color: #33526E; margin: 12px 0; line-height: 1.5; }
+.workflow-status.is-error { background: #FBEAE7; color: #943D2D; }
+.workflow-dialog { border: 1px solid var(--color-border); border-radius: 12px; padding: 24px; width: min(720px, calc(100vw - 32px)); max-height: 90vh; margin: auto; color: var(--color-text); font-family: inherit; }
+.workflow-dialog::backdrop, #report-dialog::backdrop { background: rgba(18,41,43,.55); }
+.workflow-dialog h2 { font-family: 'Fraunces', serif; margin-bottom: 16px; }
+.workflow-dialog h3 { font-size: 15px; margin-bottom: 8px; }
+.workflow-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; border: 0; padding: 0; margin: 18px 0; }
+.workflow-form-grid .full-width { grid-column: 1 / -1; }
+.workflow-dialog label, .workflow-toolbar label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.workflow-dialog input, .workflow-dialog select, .workflow-dialog textarea, .workflow-toolbar input, .workflow-toolbar select { padding: 9px 12px; border: 1px solid var(--color-border); border-radius: 6px; font: inherit; font-size: 15px; min-width: 0; }
+.workflow-dialog textarea { width: 100%; }
+.workflow-choice-list { display: grid; gap: 8px; max-height: 220px; overflow-y: auto; margin-top: 12px; }
+.workflow-choice-list label { flex-direction: row; align-items: flex-start; gap: 10px; }
+.workflow-choice-list input { margin-top: 3px; }
+.workflow-badge { display: inline-block; padding: 3px 8px; font-size: 12px; border-radius: 5px; background: #F1EFE9; white-space: nowrap; }
+.workflow-badge.finalized, .workflow-badge.approved { background: #E9F3EA; color: #2E6B3E; }
+.workflow-badge.pending { background: #FCF3D9; color: #8A6D1B; }
+.workflow-badge.rejected { background: #FBEAE7; color: #A6402F; }
+.workflow-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.workflow-grade-list { list-style: none; display: grid; gap: 6px; font-size: 13px; }
+.workflow-detail { display: block; font-size: 12px; color: var(--color-muted); margin-top: 5px; }
+[data-adviser-panel] .grades-table-section { overflow-x: auto; margin-top: 16px; }
+[data-adviser-panel] td { vertical-align: top; overflow-wrap: anywhere; }
+.header-actions { flex-wrap: wrap; }
+.grade-input:disabled { background: #F1EFE9; color: #59645E; }
+.filter-btn:disabled { opacity: .5; cursor: not-allowed; }
+#report-dialog { margin: auto; width: min(900px, calc(100vw - 32px)); max-height: 90vh; padding: 28px; border: 1px solid #ccc; border-radius: 10px; color: #17211D; font-family: 'Inter', sans-serif; }
+.report-tools { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 20px; }
+.report-heading { margin-bottom: 18px; }
+.report-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 16px 0; font-size: 14px; }
+.report-table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+.report-table th, .report-table td { border: 1px solid #ccc; padding: 9px; text-align: left; font-size: 13px; }
+.report-note { font-size: 12px; margin-top: 14px; color: #55635D; }
+@media(max-width:600px) { .workflow-form-grid, .report-meta { grid-template-columns: 1fr; } .workflow-dialog input, .workflow-dialog select { font-size: 16px; } }
+@media print {
+  body > * { display: none !important; }
+  body > #report-dialog[open] { display: block !important; position: static; width: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; overflow: visible; }
+  #report-dialog::backdrop, #report-dialog .report-tools { display: none; }
+  .report-table tr { break-inside: avoid; }
+  .report-table thead { display: table-header-group; }
+  @page { margin: 15mm; }
+}
