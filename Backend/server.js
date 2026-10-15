@@ -440,13 +440,17 @@ app.use('/admin/teachers', require('./routes/teacher-roles'));
 // Toggle a teacher's active/deactivated status
 app.patch('/admin/teachers/:id/deactivate', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    const teacher = await User.findById(req.params.id);
+    if (!mongoose.isObjectIdOrHexString(req.params.id)) return res.status(400).json({ error: 'Invalid teacher ID.' });
+    if (req.body.isActive !== undefined && typeof req.body.isActive !== 'boolean') {
+      return res.status(400).json({ error: 'Account status must be true or false.' });
+    }
+    const teacher = await User.findOne({ _id: req.params.id, role: 'teacher' });
 
     if (!teacher) {
       return res.status(404).json({ error: 'Teacher not found.' });
     }
 
-    teacher.isActive = !teacher.isActive;
+    teacher.isActive = req.body.isActive === undefined ? !teacher.isActive : req.body.isActive;
     await teacher.save();
 
     res.json({ message: `${teacher.username} is now ${teacher.isActive ? 'active' : 'deactivated'}.` });

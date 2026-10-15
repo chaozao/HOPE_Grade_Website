@@ -19,8 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let subjects = [];
     let ready = false;
-    let rosterRequest = 0;
-    const select = byId('subject-select');
+    const classBrowser = ClassBrowser.create(byId('class-browser'));
 
     function showStatus(id, message, isError) {
         const status = byId(id);
@@ -63,60 +62,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!advisory.subjects.length) emptyRow(teachers, 'No subjects have been assigned to this homeroom yet.', 3);
     }
 
-    function letterFor(score) {
-        if (score >= 90) return { letter: 'A', className: 'grade-a' };
-        if (score >= 80) return { letter: 'B', className: 'grade-b' };
-        if (score >= 75) return { letter: 'C', className: 'grade-c' };
-        return { letter: 'F', className: 'grade-f' };
-    }
-
-    async function loadRoster() {
-        const subjectId = select.value;
-        if (!ready || !subjects.some(function (subject) { return subject._id === subjectId; })) return;
-        const request = ++rosterRequest;
-        byId('overview-content').hidden = true;
-        byId('retry-roster-btn').hidden = true;
-        showStatus('roster-status', 'Loading grades…');
-        byId('grade-entry-link').href = 'grade-entry.html?subject=' + encodeURIComponent(subjectId);
-        byId('grade-finalization-link').href = 'grade-entry.html?subject=' + encodeURIComponent(subjectId) + '#finalization';
-        byId('insights-link').href = 'student-insights.html?subject=' + encodeURIComponent(subjectId);
-        try {
-            const data = await fetchTeacherData(token, '/teacher/subjects/' + encodeURIComponent(subjectId) + '/roster');
-            if (request !== rosterRequest) return;
-            byId('stat-average').textContent = data.classAverage !== null ? data.classAverage + '%' : '—';
-            byId('stat-average-note').textContent = data.subjectName;
-            byId('stat-roster').textContent = data.totalStudents + ' student' + (data.totalStudents === 1 ? '' : 's');
-            byId('stat-roster-note').textContent = data.subjectName;
-            byId('stat-passing').textContent = data.passingRate !== null ? data.passingRate + '%' : '—';
-            const ungraded = data.roster.filter(function (student) { return student.weightedGrade === null; }).length;
-            byId('stat-passing-note').textContent = !data.roster.length ? 'No students yet' : ungraded ? ungraded + ' not yet graded' : 'All graded';
-            const tbody = byId('grades-tbody');
-            tbody.replaceChildren();
-            data.roster.forEach(function (student) {
-                const row = appendRow(tbody, [student.lastName + ', ' + student.firstName, student.scores.hw1, student.scores.quiz1, student.scores.midterm, student.scores.project1]);
-                const cell = document.createElement('td');
-                const pill = document.createElement('span');
-                pill.className = 'grade-pill';
-                if (student.weightedGrade === null) {
-                    pill.textContent = 'Not graded';
-                } else {
-                    const grade = letterFor(student.weightedGrade);
-                    pill.classList.add(grade.className);
-                    pill.textContent = student.weightedGrade + '% (' + grade.letter + ')';
-                }
-                cell.appendChild(pill);
-                row.appendChild(cell);
-            });
-            if (!data.roster.length) emptyRow(tbody, 'No students are enrolled in this class yet.', 6);
-            byId('overview-content').hidden = false;
-            showStatus('roster-status', '');
-        } catch (error) {
-            if (request !== rosterRequest) return;
-            showStatus('roster-status', 'Could not load grades: ' + error.message, true);
-            byId('retry-roster-btn').hidden = false;
-        }
-    }
-
     function showView() {
         let view = window.location.hash.slice(1) || 'dashboard';
         if (!['dashboard', 'homeroom', 'class', 'requests', 'reports'].includes(view) || (view === 'class' && !subjects.length)) {
@@ -136,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const title = { dashboard: 'Dashboard', homeroom: 'Homeroom', class: 'Class', requests: 'Grade Edit Request', reports: 'Final Grade Reports' }[view];
         document.title = title + ' — Hope Workspace';
         document.dispatchEvent(new CustomEvent('adviser-view-changed', { detail: { view, teaching: subjects.length > 0 } }));
-        if (view === 'class' && ready) loadRoster();
+        if (view === 'class' && ready) classBrowser.show();
     }
 
     async function init() {
@@ -169,25 +114,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!subjects.length) emptyRow(assigned, results[1].status === 'rejected' ? 'Teaching assignments could not load. Use Retry loading assignments.' : 'No subjects assigned. You can manage your advisory class in Homeroom.', 4);
         byId('stat-subjects').textContent = results[1].status === 'fulfilled' ? subjects.length : '—';
         byId('teaching-note').textContent = results[1].status === 'rejected' ? 'Teaching assignments unavailable' : subjects.length ? 'Subjects you teach' : 'No subject-teaching assignments';
-        const previousSubject = select.value;
-        select.replaceChildren();
-        subjects.forEach(function (subject) {
-            const option = document.createElement('option');
-            option.value = subject._id;
-            option.textContent = subject.name + ' — ' + subject.className;
-            select.appendChild(option);
-        });
-        if (subjects.some(function (subject) { return subject._id === previousSubject; })) select.value = previousSubject;
-        select.disabled = !subjects.length;
+        classBrowser.setSubjects(subjects);
         ready = true;
         showStatus('page-status', errors.join(' '), errors.length > 0);
         byId('retry-btn').hidden = !errors.length;
         showView();
     }
 
-    select.addEventListener('change', loadRoster);
     byId('retry-btn').addEventListener('click', init);
-    byId('retry-roster-btn').addEventListener('click', loadRoster);
     window.addEventListener('hashchange', showView);
     document.addEventListener('student-record-saved', init);
     document.addEventListener('section-subjects-saved', init);

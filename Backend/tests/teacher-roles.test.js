@@ -81,7 +81,6 @@ test('assignment routes authorize admins and persist or roll back all assignment
         return fetch('http://127.0.0.1:' + server.address().port + '/admin/teachers/' + id + '/roles', { method: 'PUT', headers, body: JSON.stringify(body) });
     };
     const both = { roles: ['class-advisor', 'subject-teacher'], advisoryClassId: classId, subjectIds: [subjectId] };
-
     await t.test('teacher and unauthenticated requests cannot assign roles', async () => {
         assert.equal((await save(both, 'teacher')).status, 403);
         assert.equal((await save(both, null)).status, 401);

@@ -92,17 +92,14 @@ async function getAdvisorClass(token) {
 
 // Keep the advisor menu when opening the existing teacher tools or profile.
 async function configureAdvisorNavigation(token, subjects) {
-  const originalNav = document.querySelector('.sidebar-nav').cloneNode(true);
-  const originalRole = document.querySelector('.user-role').textContent;
   const hint = workspaceHint(token);
   if (hint?.adviser) renderAdvisorNavigation(hint.teaching);
   try {
     const advisory = await getAdvisorClass(token);
     if (!advisory) {
-      if (hint?.adviser) {
-        document.querySelector('.sidebar-nav').replaceChildren(...originalNav.childNodes);
-        document.querySelector('.user-role').textContent = originalRole;
-      }
+      if (!subjects) subjects = await fetchTeacherData(token, '/teacher/my-subjects');
+      rememberWorkspace(token, false, subjects.length > 0);
+      renderTeacherNavigation(subjects.length > 0);
       revealWorkspace(); return;
     }
     // Establish the adviser menu even if teaching assignments cannot load.
@@ -184,4 +181,25 @@ function confirmLogout() {
   }
 
   overlay.classList.add('open');
+}
+
+function renderTeacherNavigation(teaching) {
+  const nav = document.querySelector('.sidebar-nav');
+  nav.replaceChildren();
+  const onDashboard = location.pathname.endsWith('/dashboard.html');
+  const view = onDashboard ? (location.hash.slice(1) || 'dashboard') : /\/(grade-entry|student-insights)\.html$/.test(location.pathname) ? 'class' : '';
+  const items = [['dashboard', 'bi-speedometer2', 'Dashboard']];
+  if (teaching) items.push(['class', 'bi-journal-bookmark', 'Class']);
+  items.push(['requests', 'bi-arrow-repeat', 'Grade Edit Request']);
+  items.forEach(([id, icon, label]) => {
+    const link = document.createElement('a');
+    link.href = 'dashboard.html' + (id === 'dashboard' ? '' : '#' + id);
+    link.className = 'nav-item';
+    if (id === view) { link.classList.add('active'); link.setAttribute('aria-current', 'page'); }
+    const glyph = document.createElement('i'); glyph.className = 'bi ' + icon;
+    const text = document.createElement('span'); text.textContent = label;
+    link.append(glyph, text); nav.appendChild(link);
+  });
+  document.querySelector('.user-role').textContent = 'Subject Teacher';
+  revealWorkspace();
 }

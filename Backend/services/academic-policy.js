@@ -48,6 +48,28 @@ function validateGrades(entries, studentIds) {
     return { studentId, scores };
   });
 }
+function validateActivityScores(entries, studentIds, activities, term) {
+  if (![1, 2, 3].includes(term)) fail('Select a valid term.');
+  if (!Array.isArray(entries) || !entries.length) fail('No activity scores were supplied.');
+  const allowed = new Set(studentIds.map(String));
+  const columns = new Map(activities.filter(item => item.term === term).map(item => [String(item._id), item]));
+  const seen = new Set();
+  return entries.map(entry => {
+    const studentId = id(entry?.studentId, 'student');
+    if (!allowed.has(studentId)) fail('A student is not enrolled in this subject.', 403);
+    if (seen.has(studentId)) fail('A student was submitted more than once.');
+    seen.add(studentId);
+    if (!entry.scores || typeof entry.scores !== 'object' || Array.isArray(entry.scores) || !Object.keys(entry.scores).length) fail('Enter activity scores.');
+    const scores = {};
+    for (const [key, value] of Object.entries(entry.scores)) {
+      const activity = columns.get(key);
+      if (!activity) fail('This activity is unavailable in the selected term. Reload the class.', 409);
+      if (value !== null && (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > activity.maxScore)) fail(activity.title + ': enter a score from 0 to ' + activity.maxScore + ', or leave it blank.');
+      scores[key] = value;
+    }
+    return { studentId, scores };
+  });
+}
 function requireDraft(subject) {
   if (subject.gradeStatus === 'finalized') fail('These grades are finalized and locked. Request reopening from the class adviser.', 409);
 }
@@ -55,4 +77,4 @@ function requireComplete(roster) {
   if (!roster.length) fail('Enroll students before finalizing grades.');
   if (roster.some(row => weightedGrade(row.scores) === null)) fail('Complete every enrolled student’s scores before finalizing.', 409);
 }
-module.exports = { fail, id, text, version, scoreFields, weightedGrade, rosterFilter, enrolled, validateGrades, requireDraft, requireComplete };
+module.exports = { validateActivityScores, fail, id, text, version, scoreFields, weightedGrade, rosterFilter, enrolled, validateGrades, requireDraft, requireComplete };

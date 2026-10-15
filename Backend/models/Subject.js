@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const subjectSchema = new mongoose.Schema({
+  activities: [{
+    term: { type: Number, enum: [1, 2, 3], required: true },
+    category: { type: String, enum: ['writtenOral', 'performanceTasks', 'examination'], required: true },
+    title: { type: String, required: true, maxlength: 100 },
+    maxScore: { type: Number, required: true, min: 1, max: 10000 }
+  }],
   gradeStatus: { type: String, enum: ['draft', 'finalized'], default: 'draft' },
   gradeVersion: { type: Number, default: 0 },
   workflowRevision: { type: Number, default: 0 },

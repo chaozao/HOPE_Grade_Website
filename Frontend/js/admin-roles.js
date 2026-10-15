@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let teachers = [], classes = [], subjects = [];
     let saving = false;
     let loadVersion = 0;
+    let selectedTeacherId = null;
+    let opener = null;
 
     function status(message, error = false) {
         byId('roles-status').textContent = message;
@@ -38,6 +40,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function selectTeacher() {
         const teacher = teachers.find(item => item._id === teacherSelect.value);
+        byId('roles-teacher-name').textContent = teacher?.username || 'Teacher';
+        byId('roles-teacher-email').textContent = teacher?.email || '';
+        byId('toggle-teacher-account').hidden = !selectedTeacherId || !teacher;
+        byId('toggle-teacher-account').textContent = teacher?.isActive ? 'Deactivate' : 'Reactivate';
         advisorCheck.checked = Boolean(teacher?.advisoryClassId);
         subjectCheck.checked = Boolean(teacher?.subjectIds?.length);
         homeroomSelect.replaceChildren(new Option('Select a homeroom', ''));
@@ -71,6 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const version = ++loadVersion;
         byId('roles-fields').disabled = true;
         byId('save-roles').disabled = true;
+        byId('toggle-teacher-account').disabled = true;
         byId('retry-roles').hidden = true;
         status('Loading assignments…');
         try {
@@ -81,6 +88,10 @@ document.addEventListener('DOMContentLoaded', function () {
             [teachers, classes, subjects] = data;
             teacherSelect.replaceChildren();
             teachers.forEach(item => teacherSelect.appendChild(new Option(item.username + ' — ' + item.email, item._id)));
+            if (selectedTeacherId) {
+                teacherSelect.value = selectedTeacherId;
+                if (!teacherSelect.value) throw new Error('This teacher is no longer available. Close this dialog and refresh the table.');
+            }
             if (!teachers.length) {
                 status('No teacher accounts yet. Add a teacher first.');
                 return;
@@ -88,7 +99,8 @@ document.addEventListener('DOMContentLoaded', function () {
             selectTeacher();
             byId('roles-fields').disabled = false;
             byId('save-roles').disabled = false;
-            teacherSelect.focus();
+            byId('toggle-teacher-account').disabled = false;
+            (selectedTeacherId ? advisorCheck : teacherSelect).focus();
         } catch (error) {
             if (version !== loadVersion) return;
             status('Could not load assignments: ' + error.message, true);
@@ -100,16 +112,69 @@ document.addEventListener('DOMContentLoaded', function () {
         if (saving) return;
         ++loadVersion;
         modal.classList.add('hidden');
-        byId('open-assign-roles').focus();
+        if (opener?.isConnected) opener.focus();
+        else byId('open-assign-roles').focus();
     }
 
-    byId('open-assign-roles').addEventListener('click', function () {
+    function openEditor(button, teacherId = null) {
+        opener = button;
+        selectedTeacherId = teacherId;
+        teacherSelect.disabled = Boolean(teacherId);
+        teacherSelect.parentElement.hidden = Boolean(teacherId);
+        byId('roles-teacher-card').hidden = !teacherId;
+        byId('roles-teacher-name').textContent = 'Loading teacher…';
+        byId('roles-teacher-email').textContent = '';
+        byId('toggle-teacher-account').hidden = true;
         modal.classList.remove('hidden');
         byId('cancel-roles').focus();
         loadAssignments();
+    }
+    byId('open-assign-roles').addEventListener('click', function () {
+        openEditor(this);
+    });
+    byId('teachers-tbody').addEventListener('click', function (event) {
+        const button = event.target.closest('.edit-teacher-roles');
+        if (button) openEditor(button, button.dataset.id);
     });
     byId('cancel-roles').addEventListener('click', close);
     byId('retry-roles').addEventListener('click', loadAssignments);
+    async function changeAccount() {
+        if (saving || byId('roles-fields').disabled || !selectedTeacherId) return;
+        const teacher = teachers.find(item => item._id === selectedTeacherId);
+        if (!teacher) return;
+        const action = teacher.isActive ? 'Deactivate' : 'Reactivate';
+        const explanation = teacher.isActive ? 'Teacher access will be blocked. Assignments are kept.' : 'Teacher access will be restored.';
+        if (!window.confirm(action + ' the account for ' + teacher.username + ' (' + teacher.email + ')?\n\n' + explanation + '\n\nUnsaved role changes will not be applied.')) return;
+        saving = true;
+        byId('roles-fields').disabled = true;
+        byId('save-roles').disabled = true;
+        byId('toggle-teacher-account').disabled = true;
+        byId('cancel-roles').disabled = true;
+        status('Updating account access...');
+        let saved = false;
+        try {
+            const result = await request('/admin/teachers/' + encodeURIComponent(teacher._id) + '/deactivate', {
+                method: 'PATCH',
+                body: JSON.stringify({ isActive: !teacher.isActive })
+            });
+            saved = true;
+            const banner = byId('teacher-status');
+            banner.textContent = result.message;
+            banner.hidden = false;
+            banner.classList.remove('is-error');
+            document.dispatchEvent(new Event('teacher-roles-saved'));
+        } catch (error) {
+            status('Could not ' + action.toLowerCase() + ' account: ' + error.message, true);
+        } finally {
+            saving = false;
+            byId('roles-fields').disabled = false;
+            byId('save-roles').disabled = false;
+            byId('toggle-teacher-account').disabled = false;
+            byId('cancel-roles').disabled = false;
+            if (saved) close();
+        }
+    }
+    byId('toggle-teacher-account').addEventListener('click', changeAccount);
     teacherSelect.addEventListener('change', selectTeacher);
     advisorCheck.addEventListener('change', updateRoleFields);
     subjectCheck.addEventListener('change', updateRoleFields);
@@ -134,6 +199,7 @@ document.addEventListener('DOMContentLoaded', function () {
         saving = true;
         byId('roles-fields').disabled = true;
         byId('save-roles').disabled = true;
+        byId('toggle-teacher-account').disabled = true;
         byId('cancel-roles').disabled = true;
         status('Saving roles…');
         let saved = false;
@@ -151,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function () {
             saving = false;
             byId('roles-fields').disabled = false;
             byId('save-roles').disabled = false;
+            byId('toggle-teacher-account').disabled = false;
             byId('cancel-roles').disabled = false;
             if (saved) close();
         }

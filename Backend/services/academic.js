@@ -45,7 +45,8 @@ async function roster(subject, session = null) {
     return {
       studentId: student._id, lrn: student.lrn || '', firstName: student.firstName,
       lastName: student.lastName, middleName: student.middleName || student.middleInitial || '',
-      gender: student.gender, gradeLevel: student.gradeLevel || '', scores, weightedGrade: P.weightedGrade(scores)
+      gender: student.gender, gradeLevel: student.gradeLevel || '', scores, weightedGrade: P.weightedGrade(scores),
+      activityScores: Object.fromEntries(byStudent.get(String(student._id))?.activityScores || [])
     };
   });
 }
@@ -62,7 +63,7 @@ async function teacherRoster(actor, subjectId) {
     finalizedAt: subject.finalizedAt, requests, totalStudents: rows.length,
     classAverage: graded.length ? Number((graded.reduce((sum, row) => sum + row.weightedGrade, 0) / graded.length).toFixed(1)) : null,
     passingRate: graded.length ? Number((graded.filter(row => row.weightedGrade >= 75).length / graded.length * 100).toFixed(1)) : null,
-    roster: rows
+    roster: rows, activities: subject.activities || []
   };
 }
 async function mySubjects(actor) {
@@ -73,6 +74,69 @@ async function mySubjects(actor) {
     className: subject.class?.name || 'Class unavailable', gradeStatus: subject.gradeStatus || 'draft',
     studentCount: await Student.countDocuments(P.rosterFilter(subject))
   })));
+}
+async function addActivity(actor, subjectId, body) {
+  if (![1, 2, 3].includes(body?.term)) P.fail('Select a valid term.');
+  if (!['writtenOral', 'performanceTasks', 'examination'].includes(body?.category)) P.fail('Select a valid activity category.');
+  const title = P.text(body?.title, 'activity title', 100);
+  if (!Number.isInteger(body?.maxScore) || body.maxScore < 1 || body.maxScore > 10000) P.fail('Maximum score must be a whole number from 1 to 10000.');
+  let result;
+  await mongoose.connection.transaction(async session => {
+    const subject = await ownedSubject(actor, subjectId, session);
+    P.requireDraft(subject);
+    P.version(body.version, subject.gradeVersion);
+    subject.activities ||= [];
+    if (subject.activities.filter(item => item.term === body.term && item.category === body.category).length >= 100) P.fail('This category already has 100 activities.');
+    subject.activities.push({ term: body.term, category: body.category, title, maxScore: body.maxScore });
+    await touch(subject, session);
+    await audit(actor, 'activity-added', { subject: subject._id, details: { term: body.term, category: body.category, title, maxScore: body.maxScore } }, session);
+    result = { activities: subject.activities, gradeVersion: subject.gradeVersion };
+  });
+  return result;
+}
+async function changeActivity(actor, subjectId, activityId, body, remove = false) {
+  activityId = P.id(activityId, 'activity');
+  const title = remove ? null : P.text(body?.title, 'activity title', 100);
+  if (!remove && (!Number.isInteger(body?.maxScore) || body.maxScore < 1 || body.maxScore > 10000)) P.fail('Maximum score must be a whole number from 1 to 10000.');
+  let result;
+  await mongoose.connection.transaction(async session => {
+    const subject = await ownedSubject(actor, subjectId, session);
+    P.requireDraft(subject);
+    P.version(body?.version, subject.gradeVersion);
+    const activity = subject.activities.id(activityId);
+    if (!activity) P.fail('Activity not found. Reload the class.', 404);
+    const before = activity.toObject();
+    if (!remove && body.maxScore < activity.maxScore && await Grade.exists({ subject: subject._id, ['activityScores.' + activityId]: { $gt: body.maxScore } }).session(session)) {
+      P.fail('Maximum points cannot be lower than an existing student score. Update those scores first.', 409);
+    }
+    if (remove) await Grade.updateMany({ subject: subject._id }, { $unset: { ['activityScores.' + activityId]: '' } }, { session });
+    if (remove) activity.deleteOne();
+    else { activity.title = title; activity.maxScore = body.maxScore; }
+    await touch(subject, session);
+    await audit(actor, remove ? 'activity-deleted' : 'activity-updated', { subject: subject._id, details: { before, after: remove ? null : activity.toObject() } }, session);
+    result = { activities: subject.activities, gradeVersion: subject.gradeVersion };
+  });
+  return result;
+}
+async function saveActivityScores(actor, subjectId, body) {
+  let gradeVersion;
+  await mongoose.connection.transaction(async session => {
+    const subject = await ownedSubject(actor, subjectId, session);
+    P.requireDraft(subject);
+    P.version(body?.version, subject.gradeVersion);
+    const students = await Student.find(P.rosterFilter(subject)).select('_id').session(session);
+    const entries = P.validateActivityScores(body?.grades, students.map(student => student._id), subject.activities || [], body?.term);
+    const before = await Grade.find({ subject: subject._id, student: { $in: entries.map(entry => entry.studentId) } }).lean().session(session);
+    await touch(subject, session);
+    for (const entry of entries) {
+      const updates = { updatedBy: actor.userId };
+      for (const [activityId, score] of Object.entries(entry.scores)) updates['activityScores.' + activityId] = score;
+      await Grade.findOneAndUpdate({ subject: subject._id, student: entry.studentId }, { $set: updates }, { session, upsert: true, runValidators: true });
+    }
+    await audit(actor, 'grades-saved', { subject: subject._id, details: { term: body.term, before, after: entries } }, session);
+    gradeVersion = subject.gradeVersion;
+  });
+  return { message: 'Activity scores saved.', gradeVersion };
 }
 async function saveGrades(actor, subjectId, body) {
   let gradeVersion;
@@ -138,6 +202,13 @@ async function myRequests(actor) {
   const subjects = await Subject.find({ teacher: actor.userId }).select('_id');
   return EditRequest.find({ requestedBy: actor.userId, subject: { $in: subjects.map(subject => subject._id) } })
     .populate('subject', 'name').populate('class', 'name').populate('reviewedBy', 'username').sort({ createdAt: -1 });
+}
+async function teacherModificationHistory(actor) {
+  await teacher(actor);
+  const subjects = await Subject.find({ teacher: actor.userId }).select('_id');
+  return Audit.find({ subject: { $in: subjects.map(subject => subject._id) } })
+    .select('action subject actor createdAt').populate('subject', 'name').populate('actor', 'username')
+    .sort({ createdAt: -1 }).limit(100);
 }
 async function modificationHistory(actor) {
   const classes = await adviser(actor);
@@ -330,5 +401,5 @@ async function insights(actor, subjectId) {
   }));
   return { ...data, distribution, componentAverages, atRisk: atRisk.sort((a, b) => a.weightedGrade - b.weightedGrade) };
 }
-module.exports = { adviser, teacherRoster, mySubjects, saveGrades, finalize, requestEdit, requestsForAdviser, reviewRequest,
-  studentOptions, listStudents, saveStudent, monitor, finalReport, insights, myRequests, modificationHistory };
+module.exports = { adviser, teacherRoster, mySubjects, saveActivityScores, addActivity, changeActivity, saveGrades, finalize, requestEdit, requestsForAdviser, reviewRequest,
+  studentOptions, listStudents, saveStudent, monitor, finalReport, insights, myRequests, modificationHistory, teacherModificationHistory };

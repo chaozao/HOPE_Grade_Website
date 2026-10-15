@@ -50,22 +50,31 @@ document.addEventListener('DOMContentLoaded', function () {
     const navItems = document.querySelectorAll('.nav-item');
     const tabPanels = document.querySelectorAll('.tab-panel');
 
+    function showTab() {
+        const wantedTab = window.location.hash.slice(1);
+        const selected = Array.from(navItems).find(function (btn) {
+            return btn.dataset.tab === wantedTab;
+        }) || navItems[0];
+        navItems.forEach(function (btn) {
+            const active = btn === selected;
+            btn.classList.toggle('active', active);
+            if (active) btn.setAttribute('aria-current', 'page');
+            else btn.removeAttribute('aria-current');
+        });
+        tabPanels.forEach(function (panel) {
+            panel.classList.toggle('hidden', panel.id !== 'tab-' + selected.dataset.tab);
+        });
+    }
+
     navItems.forEach(function (btn) {
         btn.addEventListener('click', function () {
-            navItems.forEach(function (b) { b.classList.remove('active'); });
-            btn.classList.add('active');
-
-            tabPanels.forEach(function (panel) { panel.classList.add('hidden'); });
-            document.getElementById('tab-' + btn.dataset.tab).classList.remove('hidden');
+            // The URL survives both normal and cache-bypassing refreshes.
+            window.location.hash = btn.dataset.tab;
+            showTab();
         });
     });
-
-    // Arriving from another page (like the profile page) with #classes or
-    // #subjects in the address? Open that tab instead of the default one.
-    const wantedTab = window.location.hash.replace('#', '');
-    if (['teachers', 'classes', 'subjects'].includes(wantedTab)) {
-        document.querySelector('.nav-item[data-tab="' + wantedTab + '"]').click();
-    }
+    window.addEventListener('hashchange', showTab);
+    showTab();
 
     // ---------- LOAD TEACHERS ----------
     let cachedTeachers = null;
@@ -194,9 +203,11 @@ document.addEventListener('DOMContentLoaded', function () {
             cell().appendChild(status);
             const action = document.createElement('button');
             action.type = 'button';
-            action.className = 'btn-small toggle-status';
+            action.className = 'edit-teacher-roles';
             action.dataset.id = teacher._id;
-            action.textContent = teacher.isActive ? 'Deactivate' : 'Reactivate';
+            action.title = 'Edit roles and assignments';
+            action.setAttribute('aria-label', 'Edit roles for ' + (teacher.username || teacher.email));
+            action.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16" aria-hidden="true"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/></svg>';
             cell().appendChild(action);
             rows.appendChild(row);
         });
@@ -221,26 +232,67 @@ document.addEventListener('DOMContentLoaded', function () {
             return '<option value="' + t._id + '">' + (t.username || t.email) + '</option>';
         }).join('');
 
-        document.querySelectorAll('.toggle-status').forEach(function (btn) {
-            btn.addEventListener('click', async function () {
-                await authFetch(API_BASE_URL + '/admin/teachers/' + btn.dataset.id + '/deactivate', { method: 'PATCH' });
-                loadTeachers();
-            });
-        });
     }
 
     // ---------- LOAD CLASSES ----------
+    let cachedClasses = [];
+    const classFilters = [
+        ['filter-class-name', 'name', 'All classes'],
+        ['filter-class-grade', 'gradeLevel', 'All grade levels'],
+        ['filter-class-section', 'section', 'All sections']
+    ];
+    function setFilterOptions(id, entries, placeholder) {
+        const select = document.getElementById(id);
+        const previous = select.value;
+        select.replaceChildren(new Option(placeholder, ''), ...entries.map(([value, label]) => new Option(label, value)));
+        select.value = entries.some(([value]) => value === previous) ? previous : '';
+    }
+    function classLabel(cls) {
+        return [cls.name, cls.gradeLevel, cls.section].filter(Boolean).join(' - ');
+    }
+    function addCells(row, values) {
+        values.forEach(value => {
+            const cell = document.createElement('td');
+            cell.textContent = value || '—';
+            row.appendChild(cell);
+        });
+    }
+    function showEmptyTable(tbody, columns, message) {
+        if (tbody.children.length) return;
+        const row = document.createElement('tr');
+        addCells(row, [message]);
+        row.firstElementChild.colSpan = columns;
+        tbody.appendChild(row);
+    }
+    classFilters.forEach(([id]) => document.getElementById(id).addEventListener('change', renderClasses));
+    document.getElementById('filter-subject-class').addEventListener('change', renderSubjects);
+
     async function loadClasses() {
         const classes = await authFetch(API_BASE_URL + '/admin/classes');
+        if (!Array.isArray(classes)) throw new Error('The server returned an invalid class list.');
+        cachedClasses = classes;
+        classFilters.forEach(([id, field, placeholder]) => {
+            const values = [...new Set(classes.map(cls => cls[field]).filter(Boolean))]
+                .sort((a, b) => a === 'Kinder' ? -1 : b === 'Kinder' ? 1 : a.localeCompare(b, undefined, { numeric: true }));
+            setFilterOptions(id, values.map(value => [value, value]), placeholder);
+        });
+        setFilterOptions('filter-subject-class', classes.map(cls => [cls._id, classLabel(cls)]), 'All classes and sections');
+        renderClasses();
+        renderSubjects();
+        const classSelect = document.getElementById('new-subject-class');
+        classSelect.replaceChildren(...classes.map(cls => new Option(classLabel(cls), cls._id)));
+    }
+
+    function renderClasses() {
         const tbody = document.getElementById('classes-tbody');
         tbody.innerHTML = '';
-
+        const classes = cachedClasses.filter(cls => classFilters.every(([id, field]) => {
+            const value = document.getElementById(id).value;
+            return !value || cls[field] === value;
+        }));
         classes.forEach(function (cls) {
             const row = document.createElement('tr');
-            row.innerHTML =
-                '<td>' + cls.name + '</td>' +
-                '<td>' + (cls.adviser ? cls.adviser.username : '—') + '</td>' +
-                '<td>' + (cls.adviser ? cls.adviser.email : '—') + '</td>';
+            addCells(row, [cls.name, cls.gradeLevel, cls.section, cls.adviser?.username]);
             const action = document.createElement('td');
             const manage = AcademicUI.button('Manage subjects', () => SectionSubjects.open(cls._id));
             manage.className = 'btn-secondary';
@@ -249,10 +301,7 @@ document.addEventListener('DOMContentLoaded', function () {
             tbody.appendChild(row);
         });
 
-        const classSelect = document.getElementById('new-subject-class');
-        classSelect.innerHTML = classes.map(function (c) {
-            return '<option value="' + c._id + '">' + c.name + '</option>';
-        }).join('');
+        showEmptyTable(tbody, 5, 'No classes match your selections.');
     }
 
     // ---------- LOAD SUBJECTS ----------
@@ -261,17 +310,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!Array.isArray(subjects)) throw new Error('The server returned an invalid subject list.');
         cachedSubjects = subjects;
         if (cachedTeachers !== null) renderTeachers(cachedTeachers);
+        renderSubjects();
+    }
+
+    function renderSubjects() {
+        if (cachedSubjects === null) return;
         const tbody = document.getElementById('subjects-tbody');
         tbody.innerHTML = '';
-
+        const selectedClass = document.getElementById('filter-subject-class').value;
+        const subjects = cachedSubjects.filter(subject => !selectedClass || subject.class?._id === selectedClass);
         subjects.forEach(function (subject) {
             const row = document.createElement('tr');
-            row.innerHTML =
-                '<td>' + subject.name + '</td>' +
-                '<td>' + (subject.class ? subject.class.name : '—') + '</td>' +
-                '<td>' + (subject.teacher ? subject.teacher.username : '—') + '</td>';
+            const cls = cachedClasses.find(cls => cls._id === subject.class?._id) || subject.class;
+            addCells(row, [subject.name, cls && classLabel(cls), subject.teacher?.username]);
             tbody.appendChild(row);
         });
+        showEmptyTable(tbody, 3, 'No subjects match your selection.');
     }
 
     document.addEventListener('section-subjects-saved', () => {
@@ -293,6 +347,29 @@ document.addEventListener('DOMContentLoaded', function () {
     setupModal('open-add-teacher', 'modal-add-teacher');
     setupModal('open-add-class', 'modal-add-class');
     setupModal('open-add-subject', 'modal-add-subject');
+
+    const gradePicker = document.getElementById('grade-picker');
+    const gradeSelect = document.getElementById('new-class-grade-level');
+    const gradeSummary = gradePicker.querySelector('summary');
+    gradeSelect.addEventListener('change', function () {
+        document.getElementById('grade-picker-value').textContent = gradeSelect.value || 'Choose grade level';
+    });
+    function closeGradePicker() {
+        gradePicker.open = false;
+        gradeSummary.focus();
+    }
+    gradeSelect.addEventListener('click', function () { if (gradeSelect.value) closeGradePicker(); });
+    gradeSelect.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === 'Escape') {
+            event.preventDefault();
+            closeGradePicker();
+        }
+    });
+    gradeSelect.addEventListener('invalid', function () { gradePicker.open = true; });
+    document.getElementById('form-add-class').addEventListener('reset', function () {
+        document.getElementById('grade-picker-value').textContent = 'Choose grade level';
+        gradePicker.open = false;
+    });
 
     const teacherModal = document.getElementById('modal-add-teacher');
     const teacherPassword = document.getElementById('new-teacher-password');

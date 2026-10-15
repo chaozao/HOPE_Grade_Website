@@ -30,6 +30,8 @@ test('advisor assignment, navigation, login, and recovery flows in Chrome', { ti
     let teacherDashboardVisits = 0;
     let savedRoles = { roles: [], advisoryClassId: null, subjectIds: [] };
     let failRoleSave = false;
+    let teacherActive = true;
+    let failAccountAction = false;
     let roleSaveCount = 0;
     let releaseSubjectResponse;
     const academicFixture = require('./academic-fixtures.cjs')();
@@ -75,14 +77,24 @@ test('advisor assignment, navigation, login, and recovery flows in Chrome', { ti
                 });
                 return;
             }
+            if (route === '/admin/teachers/teacher1/deactivate' && req.method === 'PATCH') {
+                let body = '';
+                req.on('data', chunk => { body += chunk; });
+                req.on('end', () => {
+                    if (failAccountAction) return json({ error: 'Status update failed.' }, 500);
+                    teacherActive = JSON.parse(body).isActive;
+                    json({ message: 'Account status updated.' });
+                });
+                return;
+            }
             if (route === '/admin/teachers') return json([
-                { _id: 'teacher1', username: 'Test Advisor', email: 'teacher@example.test', isActive: true,
+                { _id: 'teacher1', username: 'Test Advisor', email: 'teacher@example.test', isActive: teacherActive,
                     advisoryClassId: savedRoles.advisoryClassId, advisoryClass: savedRoles.advisoryClassId ? 'Grade 7' : null,
                     subjectIds: savedRoles.subjectIds, subjectsTaught: savedRoles.subjectIds.map(id => subjects.find(s => s._id === id).name), teacherRoles: savedRoles.roles }
             ]);
             if (route === '/admin/classes') return json([
-                { _id: 'class1', name: 'Grade 7', adviser: savedRoles.advisoryClassId ? { _id: 'teacher1', username: 'Test Advisor' } : null },
-                { _id: 'class2', name: 'Grade 8', adviser: { _id: 'other', username: 'Other Teacher' } }
+                { _id: 'class1', name: 'Grade 7', gradeLevel: 'Grade 7', section: 'Diamond', adviser: savedRoles.advisoryClassId ? { _id: 'teacher1', username: 'Test Advisor' } : null },
+                { _id: 'class2', name: 'Grade 8', gradeLevel: 'Grade 8', section: 'Ruby', adviser: { _id: 'other', username: 'Other Teacher' } }
             ]);
             if (route === '/admin/subjects') return json(subjects.map(subject => ({
                 ...subject, class: { _id: 'class1', name: subject.className },
@@ -197,6 +209,50 @@ test('advisor assignment, navigation, login, and recovery flows in Chrome', { ti
     await navigate('index.html');
     await evaluate('sessionStorage.setItem("token", ' + JSON.stringify(tokenFor('teacher')) + ')');
 
+    await t.test('all roles keep their current page after normal and hard refresh', async () => {
+        const refresh = async (ignoreCache, expected) => {
+            const url = await evaluate('location.href');
+            await evaluate('window.refreshMarker = true');
+            await command('Page.reload', { ignoreCache });
+            await waitFor('!window.refreshMarker && document.readyState === "complete"');
+            await waitFor(expected);
+            assert.equal(await evaluate('location.href'), url);
+        };
+        mode = 'admin';
+        await evaluate('saveToken(' + JSON.stringify(tokenFor('admin')) + ', false)');
+        await navigate('admin-dashboard.html');
+        for (const tab of ['classes', 'subjects', 'profile', 'teachers']) {
+            await evaluate(`document.querySelector('.nav-item[data-tab="${tab}"]').click()`);
+            const expected = `document.querySelector('.tab-panel:not(.hidden)').id === 'tab-${tab}'`;
+            await waitFor(`location.hash === '#${tab}'`);
+            for (const ignoreCache of [false, true]) await refresh(ignoreCache, expected);
+        }
+        await evaluate('history.back()');
+        await waitFor('location.hash === "#profile" && !document.getElementById("tab-profile").classList.contains("hidden")');
+        await evaluate('history.forward()');
+        await waitFor('location.hash === "#teachers" && !document.getElementById("tab-teachers").classList.contains("hidden")');
+
+        mode = 'advisor';
+        await evaluate('saveToken(' + JSON.stringify(tokenFor('teacher', true)) + ', false)');
+        for (const view of ['homeroom', 'class', 'requests', 'reports']) {
+            await navigate('class-advisor.html#' + view);
+            const expected = `!document.getElementById('view-${view}').hidden`;
+            await waitFor(expected);
+            for (const ignoreCache of [false, true]) await refresh(ignoreCache, expected);
+        }
+        for (const adviser of [false, true]) {
+            mode = adviser ? 'advisor' : 'teacher';
+            await evaluate('saveToken(' + JSON.stringify(tokenFor('teacher', adviser)) + ', false)');
+            for (const page of ['grade-entry.html', 'student-insights.html', 'profile.html']) {
+                await navigate(page);
+                const expected = `location.pathname.endsWith('/${page}') && !document.documentElement.classList.contains('workspace-pending')`;
+                await waitFor(expected);
+                for (const ignoreCache of [false, true]) await refresh(ignoreCache, expected);
+            }
+        }
+        await evaluate('saveToken(' + JSON.stringify(tokenFor('teacher')) + ', false)');
+    });
+
     await t.test('homeroom-only advisor starts on Dashboard and Class is inaccessible', async () => {
         mode = 'no-teaching';
         await navigate('class-advisor.html');
@@ -210,18 +266,21 @@ test('advisor assignment, navigation, login, and recovery flows in Chrome', { ti
         assert.equal(await evaluate('document.querySelectorAll("#homeroom-tbody img").length'), 0);
         assert.match(await evaluate('document.getElementById("homeroom-tbody").textContent'), /<img/);
     });
-    await t.test('subject assignment reveals Class, loads grades, and keeps selected subject in teacher tools', async () => {
+    await t.test('subject assignment reveals Class and loads grades without the removed summary or tools', async () => {
         mode = 'advisor';
         await navigate('class-advisor.html#class');
-        await waitFor('!document.getElementById("overview-content").hidden');
+        await waitFor('document.querySelectorAll("#class-subjects-tbody a").length === 2');
         assert.equal(await evaluate('document.getElementById("class-nav").hidden'), false);
-        assert.equal(await evaluate('document.getElementById("stat-average").textContent'), '85%');
-        await evaluate('document.getElementById("subject-select").value = "science"; document.getElementById("subject-select").dispatchEvent(new Event("change"))');
-        await waitFor('document.getElementById("stat-average-note").textContent === "Science"');
-        await evaluate('document.getElementById("grade-entry-link").click()');
-        await waitFor('document.querySelector(".user-role")?.textContent === "Class Advisor"');
-        assert.equal(await evaluate('document.getElementById("subject-select").value'), 'science');
-        assert.deepEqual(await evaluate('Array.from(document.querySelectorAll(".sidebar-nav span"), n => n.textContent)'), ['Dashboard', 'Homeroom', 'Class', 'Grade Edit Request', 'Final Grade Reports']);
+        assert.equal(await evaluate('document.querySelectorAll("#view-class .stat-cards, #view-class .class-tools, #grade-entry-link, #grade-finalization-link, #insights-link").length'), 0);
+        assert.equal(await evaluate('document.querySelector("#view-class #subject-select")'), null);
+        assert.match(await evaluate('document.getElementById("class-subjects-tbody").textContent'), /100%/);
+        await evaluate('document.querySelectorAll("#class-subjects-tbody a")[1].click()');
+        await waitFor('document.getElementById("class-grades-tbody")?.textContent.includes("Santos, Ana")');
+        assert.deepEqual(await evaluate('Array.from(document.querySelectorAll("#class-term-select option"), n => n.textContent)'), ['1st Term', '2nd Term', '3rd Term', 'Final Grades']);
+        assert.equal(await evaluate('document.querySelectorAll("#class-grades-tbody tr:first-child td").length'), 8);
+        await evaluate('document.getElementById("class-term-select").value = "4"; document.getElementById("class-term-select").dispatchEvent(new Event("change"))');
+        assert.equal(await evaluate('document.querySelectorAll("#class-grades-tbody tr:first-child td").length'), 7);
+        assert.match(await evaluate('document.getElementById("class-grades-tbody").textContent'), /Incomplete/);
     });
     await t.test('failed assignment lookup keeps Class hidden and retry recovers', async () => {
         mode = 'subjects-error';
@@ -236,10 +295,10 @@ test('advisor assignment, navigation, login, and recovery flows in Chrome', { ti
     await t.test('roster errors recover through retry', async () => {
         mode = 'roster-error';
         await navigate('class-advisor.html#class');
-        await waitFor('!document.getElementById("retry-roster-btn").hidden');
+        await waitFor('!document.getElementById("class-browser-retry").hidden');
         mode = 'advisor';
-        await evaluate('document.getElementById("retry-roster-btn").click()');
-        await waitFor('!document.getElementById("overview-content").hidden');
+        await evaluate('document.getElementById("class-browser-retry").click()');
+        await waitFor('document.querySelectorAll("#class-subjects-tbody a").length === 2');
     });
     await t.test('empty homeroom renders empty states and mobile menu opens and closes', async () => {
         mode = 'empty';
@@ -260,9 +319,39 @@ test('advisor assignment, navigation, login, and recovery flows in Chrome', { ti
             await navigate('index.html');
             await evaluate('document.getElementById("email").value = "teacher@example.test"; document.getElementById("password").value = "Password123"; document.getElementById("login-form").requestSubmit()');
             await waitFor('location.pathname.endsWith(' + JSON.stringify(destination) + ')');
-            await waitFor(scenario === 'advisor' ? 'document.getElementById("page-status")?.hidden' : 'document.getElementById("stat-average")?.textContent === "85%"');
+            await waitFor(scenario === 'advisor' ? 'document.getElementById("page-status")?.hidden' : 'document.getElementById("assigned-subjects-tbody")?.textContent.includes("Math")');
             if (scenario === 'advisor') assert.equal(teacherDashboardVisits, priorVisits, 'Adviser login never visits the subject-teacher dashboard');
         }
+    });
+    await t.test('subject teacher dashboard, class tools, requests, and empty assignments', async () => {
+        mode = 'teacher';
+        await evaluate('sessionStorage.setItem("token", ' + JSON.stringify(tokenFor('teacher', false)) + ')');
+        await navigate('dashboard.html');
+        await waitFor('document.getElementById("assigned-subjects-tbody").textContent.includes("Math")');
+        assert.deepEqual(await evaluate('Array.from(document.querySelectorAll(".sidebar-nav span"), n => n.textContent)'), ['Dashboard', 'Class', 'Grade Edit Request']);
+        assert.equal(await evaluate('document.getElementById("view-dashboard").hidden'), false);
+        await evaluate('document.querySelectorAll("#assigned-subjects-tbody a")[1].click()');
+        await waitFor('!document.getElementById("view-class").hidden');
+        await waitFor('document.querySelectorAll("#class-subjects-tbody a").length === 2');
+        await evaluate('document.querySelectorAll("#class-subjects-tbody a")[1].click()');
+        await waitFor('document.getElementById("class-grades-tbody")?.textContent.includes("Santos, Ana")');
+        assert.equal(await evaluate('document.querySelector("#view-class #subject-select")'), null);
+        assert.equal(await evaluate('document.querySelectorAll("#grade-entry-link, #grade-finalization-link").length'), 0);
+        await evaluate('location.hash = "requests"');
+        await waitFor('document.getElementById("my-requests-tbody").textContent.includes("no grade-edit requests")');
+        assert.deepEqual(await evaluate('Array.from(document.querySelectorAll("[data-adviser-tab]"), n => n.textContent)'), ['My Requests', 'Modification History']);
+        await evaluate('document.querySelector("[data-adviser-tab=history]").click()');
+        await waitFor('document.getElementById("history-tbody").textContent.includes("No grade modifications")');
+        await navigate('profile.html');
+        await waitFor('!document.documentElement.classList.contains("workspace-pending")');
+        assert.deepEqual(await evaluate('Array.from(document.querySelectorAll(".sidebar-nav span"), n => n.textContent)'), ['Dashboard', 'Class', 'Grade Edit Request']);
+        mode = 'assigned-account'; savedRoles = { roles: [], advisoryClassId: null, subjectIds: [] };
+        await navigate('dashboard.html');
+        await waitFor('document.getElementById("assigned-subjects-tbody").textContent.includes("not currently assigned")');
+        await evaluate('location.hash = "class"');
+        await waitFor('location.hash === ""');
+        assert.deepEqual(await evaluate('Array.from(document.querySelectorAll(".sidebar-nav span"), n => n.textContent)'), ['Dashboard', 'Grade Edit Request']);
+        assert.equal(await evaluate('document.getElementById("view-dashboard").hidden'), false);
     });
     await t.test('profile preserves advisor menu without Class when unassigned', async () => {
         mode = 'no-teaching';
@@ -302,6 +391,78 @@ test('advisor assignment, navigation, login, and recovery flows in Chrome', { ti
         await waitFor('location.pathname.endsWith("index.html")');
         assert.equal(await evaluate('sessionStorage.getItem("token")'), null);
     });
+    await t.test('admin class and subject filters combine correctly and grade picker fits mobile screens', async () => {
+        mode = 'admin';
+        await evaluate('sessionStorage.setItem("token", ' + JSON.stringify(tokenFor('admin')) + ')');
+        await navigate('admin-dashboard.html#classes');
+        await waitFor('document.querySelectorAll("#classes-tbody tr").length === 2 && document.querySelectorAll("#subjects-tbody tr").length > 0');
+        assert.deepEqual(await evaluate('Array.from(document.querySelectorAll("#tab-classes th"), el => el.textContent)'), ['Class Name', 'Grade Level', 'Section', 'Adviser', 'Subjects & teachers']);
+        const filter = (id, value) => evaluate(`document.getElementById(${JSON.stringify(id)}).value = ${JSON.stringify(value)}; document.getElementById(${JSON.stringify(id)}).dispatchEvent(new Event('change'))`);
+        await filter('filter-class-grade', 'Grade 7');
+        assert.equal(await evaluate('document.querySelectorAll("#classes-tbody tr").length'), 1);
+        assert.match(await evaluate('document.getElementById("classes-tbody").textContent'), /Diamond/);
+        await filter('filter-class-section', 'Ruby');
+        assert.match(await evaluate('document.getElementById("classes-tbody").textContent'), /No classes match/);
+        await filter('filter-class-grade', '');
+        assert.match(await evaluate('document.getElementById("classes-tbody").textContent'), /Other Teacher/);
+        await filter('filter-class-section', '');
+        await filter('filter-class-name', 'Grade 7');
+        assert.equal(await evaluate('document.querySelectorAll("#classes-tbody tr").length'), 1);
+        await filter('filter-class-name', '');
+        assert.equal(await evaluate('document.querySelectorAll("#classes-tbody tr").length'), 2);
+        await filter('filter-subject-class', 'class2');
+        assert.match(await evaluate('document.getElementById("subjects-tbody").textContent'), /No subjects match/);
+        await filter('filter-subject-class', 'class1');
+        assert.match(await evaluate('document.getElementById("subjects-tbody").textContent'), /Diamond/);
+        await evaluate('document.getElementById("open-add-class").click(); document.querySelector("#grade-picker summary").click()');
+        assert.deepEqual(await evaluate('Array.from(document.getElementById("new-class-grade-level").options, option => option.value).slice(1)'), ['Kinder', ...Array.from({ length: 12 }, (_, i) => 'Grade ' + (i + 1))]);
+        for (const width of [320, 390, 768]) {
+            await command('Emulation.setDeviceMetricsOverride', { width, height: 640, deviceScaleFactor: 1, mobile: true });
+            assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true);
+            assert.equal(await evaluate('document.getElementById("new-class-grade-level").scrollHeight > document.getElementById("new-class-grade-level").clientHeight'), true);
+        }
+        await filter('new-class-grade-level', 'Grade 12');
+        await evaluate('document.getElementById("new-class-grade-level").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }))');
+        assert.equal(await evaluate('document.getElementById("grade-picker-value").textContent'), 'Grade 12');
+        assert.equal(await evaluate('document.getElementById("grade-picker").open'), false);
+        await evaluate('document.getElementById("form-add-class").reset()');
+        assert.equal(await evaluate('document.getElementById("new-class-grade-level").value'), '');
+        await command('Emulation.clearDeviceMetricsOverride');
+    });
+
+    await t.test('teacher edit modal supports account deactivation, reactivation, cancellation and error recovery', async () => {
+        mode = 'admin';
+        await navigate('admin-dashboard.html');
+        const openEdit = async () => {
+            await waitFor('document.querySelector(".edit-teacher-roles")');
+            await evaluate('document.querySelector(".edit-teacher-roles").click()');
+            await waitFor('!document.getElementById("roles-fields").disabled');
+        };
+        await openEdit();
+        await evaluate('window.confirm = () => false; document.getElementById("toggle-teacher-account").click()');
+        assert.equal(teacherActive, true);
+        assert.equal(await evaluate('document.getElementById("delete-teacher-account") === null'), true);
+        assert.equal(await evaluate('document.getElementById("toggle-teacher-account").parentElement === document.getElementById("cancel-roles").parentElement'), true);
+        await evaluate('window.confirm = () => true; document.getElementById("toggle-teacher-account").click()');
+        await waitFor('document.getElementById("modal-assign-roles").classList.contains("hidden") && document.querySelector("#teachers-tbody .status-inactive")');
+        assert.equal(teacherActive, false);
+        await openEdit();
+        assert.equal(await evaluate('document.getElementById("toggle-teacher-account").textContent'), 'Reactivate');
+        await evaluate('document.getElementById("toggle-teacher-account").click()');
+        await waitFor('document.getElementById("modal-assign-roles").classList.contains("hidden") && document.querySelector("#teachers-tbody .status-active")');
+        assert.equal(teacherActive, true);
+        await openEdit();
+        failAccountAction = true;
+        await evaluate('document.getElementById("toggle-teacher-account").click()');
+        await waitFor('document.getElementById("roles-status").textContent.includes("Status update failed")');
+        assert.equal(await evaluate('document.getElementById("roles-fields").disabled'), false);
+        failAccountAction = false;
+        await evaluate('document.getElementById("toggle-teacher-account").click()');
+        await waitFor('document.getElementById("modal-assign-roles").classList.contains("hidden") && document.querySelector("#teachers-tbody .status-inactive")');
+        assert.equal(teacherActive, false);
+        teacherActive = true;
+    });
+
     await t.test('admin can assign both roles, edit existing roles, and recover from save errors', async () => {
         mode = 'admin';
         subjects.push(
@@ -331,8 +492,17 @@ test('advisor assignment, navigation, login, and recovery flows in Chrome', { ti
         assert.equal(await evaluate('document.querySelector("#teachers-tbody .assignment-class").textContent'), 'Grade 7');
         assert.equal(await evaluate('document.querySelector("#teachers-tbody .assignment-toggle")'), null);
         // Several subjects, including the same subject in distinct sections.
-        await evaluate('document.getElementById("open-assign-roles").click()');
+        await evaluate('document.querySelector(".edit-teacher-roles svg").dispatchEvent(new MouseEvent("click", { bubbles: true }))');
         await waitFor('!document.getElementById("roles-fields").disabled');
+        assert.equal(await evaluate('document.getElementById("roles-teacher").value'), 'teacher1');
+        assert.equal(await evaluate('document.getElementById("roles-teacher").disabled'), true);
+        assert.equal(await evaluate('document.getElementById("roles-teacher-name").textContent'), 'Test Advisor');
+        assert.equal(await evaluate('document.querySelectorAll(".toggle-status").length'), 0);
+        for (const width of [320, 390, 768]) {
+            await command('Emulation.setDeviceMetricsOverride', { width, height: 640, deviceScaleFactor: 1, mobile: true });
+            assert.equal(await evaluate('document.querySelector(".roles-modal").scrollWidth <= document.querySelector(".roles-modal").clientWidth'), true);
+        }
+        await command('Emulation.clearDeviceMetricsOverride');
         await evaluate('document.querySelectorAll("#roles-subjects input:not(:checked)").forEach(input => input.click()); document.getElementById("form-assign-roles").requestSubmit()');
         await waitFor('document.querySelector("#teachers-tbody .assignment-count")?.textContent === "4 assignments"');
         assert.equal(await evaluate('document.querySelectorAll("#teachers-tbody .teaching-assignment-list li:not([hidden])").length'), 2);
@@ -366,6 +536,23 @@ test('advisor assignment, navigation, login, and recovery flows in Chrome', { ti
         await waitFor('document.getElementById("page-status").hidden');
         assert.equal(await evaluate('document.getElementById("class-nav").hidden'), true);
         assert.equal(await evaluate('document.querySelector("[data-view=homeroom]").hidden'), false);
+    });
+    await t.test('pencil editor can change an advisor to subject teacher only and cancel without saving', async () => {
+        mode = 'admin';
+        await evaluate('saveToken(' + JSON.stringify(tokenFor('admin')) + ', false)');
+        await navigate('admin-dashboard.html');
+        await waitFor('document.querySelector(".edit-teacher-roles")');
+        await evaluate('document.querySelector(".edit-teacher-roles").click()');
+        await waitFor('!document.getElementById("roles-fields").disabled');
+        await evaluate('document.getElementById("role-advisor").click(); document.getElementById("role-subject-teacher").click(); document.querySelector("#roles-subjects input[value=math]").click(); document.getElementById("form-assign-roles").requestSubmit()');
+        await waitFor('document.getElementById("modal-assign-roles").classList.contains("hidden")');
+        assert.deepEqual(savedRoles, { roles: ['subject-teacher'], advisoryClassId: null, subjectIds: ['math'] });
+        await evaluate('document.querySelector(".edit-teacher-roles").click()');
+        await waitFor('!document.getElementById("roles-fields").disabled');
+        const saves = roleSaveCount;
+        await evaluate('document.getElementById("role-subject-teacher").click(); document.getElementById("cancel-roles").click()');
+        assert.equal(roleSaveCount, saves);
+        assert.deepEqual(savedRoles, { roles: ['subject-teacher'], advisoryClassId: null, subjectIds: ['math'] });
     });
     await t.test('teacher accounts render despite failed or delayed subject details and retry recovers', async () => {
         await evaluate('sessionStorage.setItem("token", ' + JSON.stringify(tokenFor('admin')) + ')');

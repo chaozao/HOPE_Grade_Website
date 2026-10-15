@@ -1,128 +1,93 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const token = getToken(); // from auth.js — checks sessionStorage AND localStorage
-
-    if (!token) {
-        window.location.href = 'index.html';
-        return;
+    const token = getToken(), payload = getPayload(token || '');
+    if (!payload) { location.href = 'index.html'; return; }
+    if (payload.role !== 'teacher') { location.href = 'admin-dashboard.html'; return; }
+    const UI = AcademicUI, byId = id => document.getElementById(id);
+    const classBrowser = ClassBrowser.create(byId('class-browser'));
+    let subjects = [], ready = false, tab = 'my-requests', requestVersion = 0;
+    byId('user-name').textContent = payload.username;
+    byId('logout-btn').addEventListener('click', confirmLogout);
+    async function loadTab() {
+        const version = ++requestVersion;
+        UI.status('teacher-status', 'Loading...'); byId('retry-teacher').hidden = true;
+        try {
+            await (tab === 'history' ? loadHistory() : loadMyRequests());
+            if (version === requestVersion) UI.status('teacher-status', '');
+        } catch (error) {
+            if (version !== requestVersion) return;
+            UI.status('teacher-status', error.message, true); byId('retry-teacher').hidden = false;
+        }
     }
-
-    const payload = JSON.parse(atob(token.split('.')[1]));
-
-    if (payload.role !== 'teacher') {
-        window.location.href = 'admin-dashboard.html';
-        return;
-    }
-
-    document.getElementById('user-name').textContent = payload.username;
-
-    document.getElementById('logout-btn').addEventListener('click', function () {
-        confirmLogout(); // from auth.js — asks "Are you sure?" first, then signs out
-    });
-
-    async function authFetch(url) {
-        const response = await fetch(url, {
-            headers: { 'Authorization': 'Bearer ' + token }
+    function selectTab(value) {
+        tab = value;
+        document.querySelectorAll('[data-adviser-tab]').forEach(button => {
+            const active = button.dataset.adviserTab === tab;
+            button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active));
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Something went wrong.');
-        return data;
+        document.querySelectorAll('[data-adviser-panel]').forEach(panel => { panel.hidden = panel.dataset.adviserPanel !== tab; });
+        loadTab();
     }
-
-    function letterFor(score) {
-        if (score >= 90) return { letter: 'A', className: 'grade-a' };
-        if (score >= 80) return { letter: 'B', className: 'grade-b' };
-        if (score >= 75) return { letter: 'C', className: 'grade-c' };
-        return { letter: 'F', className: 'grade-f' };
+    function showView() {
+        if (!ready) return;
+        let view = location.hash.slice(1) || 'dashboard';
+        if (!['dashboard', 'class', 'requests'].includes(view) || (view === 'class' && !subjects.length)) {
+            view = 'dashboard'; history.replaceState(null, '', location.pathname + location.search);
+        }
+        requestVersion++;
+        UI.status('teacher-status', ''); byId('retry-teacher').hidden = true;
+        ['dashboard', 'class', 'requests'].forEach(id => { byId('view-' + id).hidden = id !== view; });
+        renderTeacherNavigation(subjects.length > 0);
+        if (view === 'requests') selectTab(tab);
+        if (view === 'class') classBrowser.show();
     }
-
-    async function loadRoster(subjectId) {
-        const data = await authFetch(API_BASE_URL + '/teacher/subjects/' + subjectId + '/roster');
-
-        // Stat cards
-        document.getElementById('stat-average').textContent = data.classAverage !== null ? data.classAverage + '%' : '—';
-        document.getElementById('stat-average-note').textContent = data.subjectName;
-
-        document.getElementById('stat-roster').textContent = data.totalStudents + ' student' + (data.totalStudents === 1 ? '' : 's');
-        document.getElementById('stat-roster-note').textContent = data.subjectName;
-
-        document.getElementById('stat-passing').textContent = data.passingRate !== null ? data.passingRate + '%' : '—';
-        const ungraded = data.roster.filter(function (r) { return r.weightedGrade === null; }).length;
-        document.getElementById('stat-passing-note').textContent = ungraded > 0 ? ungraded + ' not yet graded' : 'All graded';
-
-        // Table
-        const tbody = document.getElementById('grades-tbody');
-        tbody.innerHTML = '';
-
-        data.roster.forEach(function (student) {
-            const row = document.createElement('tr');
-            const fullName = student.lastName + ', ' + student.firstName;
-
-            let gradeCell;
-            if (student.weightedGrade === null) {
-                gradeCell = '<span class="grade-pill">Not graded</span>';
-            } else {
-                const grade = letterFor(student.weightedGrade);
-                gradeCell = '<span class="grade-pill ' + grade.className + '">' + student.weightedGrade + '% (' + grade.letter + ')</span>';
-            }
-
-            row.innerHTML =
-                '<td>' + fullName + '</td>' +
-                '<td>' + (student.scores.hw1 ?? '—') + '</td>' +
-                '<td>' + (student.scores.quiz1 ?? '—') + '</td>' +
-                '<td>' + (student.scores.midterm ?? '—') + '</td>' +
-                '<td>' + (student.scores.project1 ?? '—') + '</td>' +
-                '<td>' + gradeCell + '</td>';
-
-            tbody.appendChild(row);
-        });
-    }
-
+    window.addEventListener('hashchange', showView);
+    document.querySelectorAll('[data-adviser-tab]').forEach(button => button.addEventListener('click', () => selectTab(button.dataset.adviserTab)));
+    byId('refresh-my-requests').addEventListener('click', loadTab);
+    byId('refresh-history').addEventListener('click', loadTab);
+    byId('retry-teacher').addEventListener('click', () => ready ? loadTab() : init());
     async function init() {
         try {
-            if (await getAdvisorClass(token)) {
-                window.location.replace('class-advisor.html');
-                return;
-            }
+            if (await getAdvisorClass(token)) { location.replace('class-advisor.html'); return; }
+            subjects = await UI.api('/teacher/my-subjects');
+            rememberWorkspace(token, false, subjects.length > 0);
+            const tbody = byId('assigned-subjects-tbody'); tbody.replaceChildren();
+            classBrowser.setSubjects(subjects);
+            subjects.forEach(subject => {
+                const link = UI.node('a', subject.name);
+                link.href = '#class';
+                UI.row(tbody, [link, subject.className, subject.studentCount ?? 0, UI.badge(subject.gradeStatus || 'draft')]);
+            });
+            if (!subjects.length) UI.empty(tbody, 'You are not currently assigned to teach any subject. Contact your admin if this looks wrong.', 4);
+            ready = true; showView();
         } catch (error) {
             if (!getToken()) return;
-            if (workspaceHint(token)?.adviser) {
-                window.location.replace('class-advisor.html');
-                return;
-            }
-            // Keep the neutral loading screen when the role is unknown.
-            // Never interpret an unavailable assignment endpoint as subject-teacher access.
+            if (workspaceHint(token)?.adviser) { location.replace('class-advisor.html'); return; }
             const status = document.querySelector('.workspace-load-state');
-            if (status) status.firstChild.textContent = 'Could not verify your workspace. Please retry. ';
-            return;
+            if (status) status.firstChild.textContent = 'Could not load your workspace: ' + error.message + ' ';
         }
-        revealWorkspace();
-        const subjects = await authFetch(API_BASE_URL + '/teacher/my-subjects');
-        const select = document.getElementById('subject-select');
-
-        if (subjects.length === 0) {
-            document.getElementById('no-subjects-message').classList.remove('hidden');
-            select.innerHTML = '<option value="">N/A</option>';
-            select.disabled = true;
-            return;
-        }
-
-        document.getElementById('overview-content').classList.remove('hidden');
-
-        select.innerHTML = subjects.map(function (s) {
-            return '<option value="' + s._id + '">' + s.name + ' — ' + s.className + '</option>';
-        }).join('');
-
-        select.addEventListener('change', function () {
-            loadRoster(select.value);
-        });
-
-        // Load the first subject by default
-        loadRoster(subjects[0]._id);
     }
-
-    init().catch(function (error) {
-        const message = document.getElementById('no-subjects-message');
-        message.textContent = 'Could not load your dashboard: ' + error.message;
-        message.classList.remove('hidden');
-    });
+    async function loadMyRequests() {
+        const requests = await UI.api('/teacher/edit-requests');
+        const tbody = byId('my-requests-tbody'); tbody.replaceChildren();
+        requests.forEach(request => {
+            const subject = UI.node('div', request.subject?.name || 'Subject unavailable');
+            subject.appendChild(UI.node('span', request.class?.name || '', 'workflow-detail'));
+            const reason = UI.node('div', request.reason);
+            reason.appendChild(UI.node('span', new Date(request.createdAt).toLocaleString(), 'workflow-detail'));
+            const review = UI.node('div', request.reviewNote || (request.status === 'pending' ? 'Awaiting class adviser' : 'Reviewed'));
+            review.appendChild(UI.node('span', request.reviewedBy?.username || '', 'workflow-detail'));
+            const link = UI.node('a', 'Open gradebook', 'filter-btn');
+            link.href = 'grade-entry.html?subject=' + encodeURIComponent(request.subject?._id || '');
+            UI.row(tbody, [subject, reason, UI.badge(request.status), review, link]);
+        });
+        if (!requests.length) UI.empty(tbody, 'You have no grade-edit requests for your assigned subjects.', 5);
+    }
+    async function loadHistory() {
+        const entries = await UI.api('/teacher/modification-history');
+        const tbody = byId('history-tbody'); tbody.replaceChildren();
+        const labels = { 'grades-saved': 'Grades saved', 'grades-finalized': 'Grades finalized', 'reopening-requested': 'Reopening requested', 'reopening-approved': 'Reopening approved', 'reopening-rejected': 'Reopening rejected' };
+        entries.forEach(entry => UI.row(tbody, [new Date(entry.createdAt).toLocaleString(), entry.subject?.name || 'Subject unavailable', labels[entry.action] || entry.action, entry.actor?.username || 'Account unavailable']));
+        if (!entries.length) UI.empty(tbody, 'No grade modifications recorded yet.', 4);
+    }
+    init();
 });

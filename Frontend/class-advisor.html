@@ -139,24 +139,8 @@
       </section>
 
       <section class="advisor-panel" id="view-class" aria-labelledby="class-title" hidden>
-        <header class="content-header">
-          <div><h1 id="class-title">Class</h1><p class="content-subtitle">Overview of class performance, overall averages, and assignment scores.</p></div>
-          <div class="header-filters"><label class="sr-only" for="subject-select">Teaching assignment</label><select id="subject-select" disabled></select></div>
-        </header>
-        <h2>Assigned Classes</h2><div class="class-tools"><a href="grade-entry.html" class="filter-btn" id="grade-entry-link">Grade Encoding</a><a href="grade-entry.html#finalization" class="filter-btn" id="grade-finalization-link">Grade Finalization</a><a href="student-insights.html" class="filter-btn" id="insights-link">Student Insights</a></div>
-        <p class="advisor-notice" id="roster-status" role="status" hidden></p>
-        <button type="button" class="filter-btn retry-btn" id="retry-roster-btn" hidden>Retry loading grades</button>
-        <div id="overview-content" hidden>
-          <section class="stat-cards">
-            <div class="stat-card"><span class="stat-label">Class average</span><span class="stat-value" id="stat-average">—</span><span class="stat-note" id="stat-average-note"></span></div>
-            <div class="stat-card"><span class="stat-label">Total roster</span><span class="stat-value" id="stat-roster">—</span><span class="stat-note" id="stat-roster-note"></span></div>
-            <div class="stat-card"><span class="stat-label">Passing rate</span><span class="stat-value" id="stat-passing">—</span><span class="stat-note" id="stat-passing-note"></span></div>
-          </section>
-          <section class="grades-table-section">
-            <div class="table-header"><h2>Student grades overview</h2></div>
-            <table class="grades-table"><thead><tr><th scope="col">Student name</th><th scope="col">HW 1 (15%)</th><th scope="col">Quiz 1 (20%)</th><th scope="col">Midterm (30%)</th><th scope="col">Project 1 (15%)</th><th scope="col">Current grade</th></tr></thead><tbody id="grades-tbody"></tbody></table>
-          </section>
-        </div>
+        <header class="content-header"><div><h1 id="class-title">Class</h1><p class="content-subtitle">Select a subject to view your learners? term and final grades.</p></div></header>
+        <div id="class-browser"></div>
       </section>
     </main>
   </div>
@@ -185,6 +169,7 @@
   <script src="js/auth.js"></script>
   <script src="js/sidebar-toggle.js"></script>
   <script src="js/academic-ui.js"></script>
+  <script src="js/class-browser.js"></script>
   <script src="js/section-subjects.js"></script>
   <script src="js/homeroom-roster.js"></script>
   <script src="js/class-advisor.js"></script>

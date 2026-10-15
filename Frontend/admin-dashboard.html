@@ -75,11 +75,11 @@
           <table class="grades-table teacher-table">
             <thead>
               <tr>
-                <th>Username</th>
+                <th>Teacher</th>
                 <th>Email</th>
                 <th>Roles</th>
-                <th>Homeroom</th>
-                <th>Teaching Assignments</th>
+                <th>Class & Section</th>
+                <th>Assign Subject</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -99,13 +99,20 @@
           <button class="btn-primary" id="open-add-class"><i class="bi bi-plus-lg"></i> Add class</button>
         </header>
 
+        <div class="table-filters" role="group" aria-label="Filter classes">
+          <div><label for="filter-class-name">Class Name</label><select id="filter-class-name"><option value="">All classes</option></select></div>
+          <div><label for="filter-class-grade">Grade Level</label><select id="filter-class-grade"><option value="">All grade levels</option></select></div>
+          <div><label for="filter-class-section">Section</label><select id="filter-class-section"><option value="">All sections</option></select></div>
+        </div>
+
         <section class="grades-table-section">
           <table class="grades-table">
             <thead>
               <tr>
-                <th>Class name</th>
+                <th>Class Name</th>
+                <th>Grade Level</th>
+                <th>Section</th>
                 <th>Adviser</th>
-                <th>Adviser email</th>
                 <th>Subjects &amp; teachers</th>
               </tr>
             </thead>
@@ -124,12 +131,16 @@
           <button class="btn-primary" id="open-add-subject"><i class="bi bi-plus-lg"></i> Add subject</button>
         </header>
 
+        <div class="table-filters" role="group" aria-label="Filter subjects">
+          <div><label for="filter-subject-class">Class &amp; Section</label><select id="filter-subject-class"><option value="">All classes and sections</option></select></div>
+        </div>
+
         <section class="grades-table-section">
           <table class="grades-table">
             <thead>
               <tr>
                 <th>Subject name</th>
-                <th>Class</th>
+                <th>Class & Section</th>
                 <th>Teacher</th>
               </tr>
             </thead>
@@ -213,32 +224,38 @@
   <!-- MODAL: Assign Roles -->
   <div class="modal-overlay hidden" id="modal-assign-roles">
     <div class="modal roles-modal" role="dialog" aria-modal="true" aria-labelledby="assign-roles-title" aria-describedby="assign-roles-help">
-      <h2 id="assign-roles-title">Assign Roles</h2>
-      <p class="assignment-hint" id="assign-roles-help">Choose a teacher and one or both roles. Unchecking a role removes its assignments when you save.</p>
+      <p class="roles-eyebrow">TEACHER MANAGEMENT</p>
+      <h2 id="assign-roles-title">Edit roles &amp; assignments</h2>
+      <p class="assignment-hint" id="assign-roles-help">Choose Class Advisor, Subject Teacher, or both. Changes take effect when you save.</p>
+      <div class="roles-teacher-card" id="roles-teacher-card" hidden>
+        <span class="roles-avatar" aria-hidden="true"><i class="bi bi-person"></i></span>
+        <div><strong id="roles-teacher-name"></strong><span id="roles-teacher-email"></span></div>
+      </div>
       <p class="assignment-status" id="roles-status" role="status" hidden></p>
       <button type="button" class="btn-secondary" id="retry-roles" hidden>Reload assignments</button>
       <form id="form-assign-roles">
         <fieldset id="roles-fields" disabled>
           <div class="field"><label for="roles-teacher">Teacher</label><select id="roles-teacher" required></select></div>
           <div class="role-section">
-            <label class="role-choice"><input type="checkbox" id="role-advisor"> <span>Class Advisor</span></label>
+            <label class="role-choice"><input type="checkbox" id="role-advisor"> <span><strong>Class Advisor</strong><small>Manage a homeroom and its student records.</small></span></label>
             <div class="field" id="advisor-assignment" hidden>
               <label for="roles-homeroom">Homeroom</label>
               <select id="roles-homeroom"></select>
             </div>
           </div>
           <div class="role-section">
-            <label class="role-choice"><input type="checkbox" id="role-subject-teacher"> <span>Subject Teacher</span></label>
+            <label class="role-choice"><input type="checkbox" id="role-subject-teacher"> <span><strong>Subject Teacher</strong><small>Teach assigned subjects and manage their grades.</small></span></label>
             <div id="subject-assignments" hidden>
-              <p class="assignment-hint">Select the subjects this teacher will teach. The Class menu appears for advisors with at least one teaching subject.</p>
+              <p class="assignment-hint">Select the subjects this teacher will teach.</p>
               <div id="roles-subjects" class="subject-choices"></div>
             </div>
           </div>
-          <p class="assignment-hint">Classes and subjects assigned to another teacher are unavailable. Remove the previous assignment first. Create missing classes or subjects from their sidebar menus.</p>
+          <p class="assignment-hint roles-save-note">Unchecking a role removes its assignments when saved. Classes and subjects assigned to another teacher are unavailable.</p>
         </fieldset>
         <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="toggle-teacher-account" hidden disabled>Deactivate</button>
           <button type="button" class="btn-secondary" id="cancel-roles">Cancel</button>
-          <button type="submit" class="btn-primary" id="save-roles" disabled>Save roles</button>
+          <button type="submit" class="btn-primary" id="save-roles" disabled>Save changes</button>
         </div>
       </form>
     </div>
@@ -279,9 +296,30 @@
       <form id="form-add-class">
         <div class="field">
           <label>Class name</label>
-          <input type="text" id="new-class-name" placeholder="e.g. Grade 10 - Diamond" required>
+          <input type="text" id="new-class-name" placeholder="e.g. Earth and Life Science" required>
         </div>
-        <div class="field"><label for="new-class-grade-level">Grade level</label><input id="new-class-grade-level" maxlength="40" placeholder="e.g. Grade 10" required></div>
+        <div class="field">
+          <label id="grade-picker-label" for="new-class-grade-level">Grade level</label>
+          <details class="grade-picker" id="grade-picker">
+            <summary aria-labelledby="grade-picker-label grade-picker-value"><span id="grade-picker-value">Choose grade level</span></summary>
+            <select id="new-class-grade-level" size="5" required aria-label="Grade level">
+              <option value="" disabled selected>Choose grade level</option>
+              <option>Kinder</option>
+              <option>Grade 1</option>
+              <option>Grade 2</option>
+              <option>Grade 3</option>
+              <option>Grade 4</option>
+              <option>Grade 5</option>
+              <option>Grade 6</option>
+              <option>Grade 7</option>
+              <option>Grade 8</option>
+              <option>Grade 9</option>
+              <option>Grade 10</option>
+              <option>Grade 11</option>
+              <option>Grade 12</option>
+            </select>
+          </details>
+        </div>
         <div class="field"><label for="new-class-section">Section</label><input id="new-class-section" maxlength="100" placeholder="e.g. Diamond" required></div>
         <div class="field">
           <label>Adviser</label>
@@ -305,7 +343,7 @@
           <input type="text" id="new-subject-name" placeholder="e.g. Algebra II" required>
         </div>
         <div class="field">
-          <label>Class</label>
+          <label>Class & Section</label>
           <select id="new-subject-class" required></select>
         </div>
         <div class="field">

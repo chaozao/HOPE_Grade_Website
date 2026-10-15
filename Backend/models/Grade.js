@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const gradeSchema = new mongoose.Schema({
+  activityScores: { type: Map, of: { type: Number, min: 0, max: 10000 }, default: {} },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   student: {
     type: mongoose.Schema.Types.ObjectId,

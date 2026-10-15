@@ -48,3 +48,88 @@
   .report-table thead { display: table-header-group; }
   @page { margin: 15mm; }
 }
+
+/* Shared subject overview and term grade tables for both teaching workspaces. */
+#class-browser { min-width: 0; }
+.class-browser-table { margin-top: 20px; }
+.class-table-scroll { overflow-x: auto; }
+.class-table-scroll:focus-visible { outline: 2px solid #957329; outline-offset: -2px; }
+.class-browser-table .grades-table { width: 100%; }
+.class-browser-table th { white-space: normal; min-width: 100px; }
+.class-browser-table td { vertical-align: middle; }
+.class-subject-link { color: #765619; text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
+#class-browser .workflow-toolbar { justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+#class-browser .workflow-toolbar label { display: flex; align-items: center; gap: 12px; }
+#class-browser select { padding: 10px 14px; border: 1px solid #e5dccd; border-radius: 8px; background: #fff; font: inherit; }
+#class-browser [hidden] { display: none !important; }
+#class-browser .class-back-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: clamp(0.25rem, 0.8vw, 0.4375rem) clamp(0.375rem, 1vw, 0.75rem);
+}
+#class-browser .bi-arrow-left-square {
+    font-size: clamp(1.5rem, 1.25rem + 1vw, 2rem);
+    line-height: 1;
+}
+
+#class-browser .activity-group-heading { text-align: center; border-inline: 1px solid var(--color-border, #e5dccd); }
+#class-browser .activity-group-heading .filter-btn { margin: 0; font-size: 0.75rem; white-space: nowrap; }
+#class-browser .activity-number { text-align: center; background: #dce9f8; border: 1px solid #bbcde2; min-width: 64px; }
+#class-browser .activity-title { display: block; font-size: 0.7rem; font-weight: 400; width: 8rem; max-width: 8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 4px auto 0; }
+#class-browser .activity-max { text-align: center; background: #fff8de; border: 1px solid #e5dccd; }
+#class-browser .activity-editor { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 16px; border: 1px solid #e5dccd; border-radius: 8px; margin-top: 16px; }
+#class-browser .activity-editor h3, #class-browser .activity-editor p { flex-basis: 100%; }
+#class-browser .activity-editor label { display: grid; gap: 6px; }
+#class-browser .activity-editor input { max-width: 100%; min-width: 0; padding: 8px; border: 1px solid #e5dccd; border-radius: 6px; font: inherit; }
+
+#class-browser .activity-group-toolbar { display: flex; justify-content: center; align-items: center; gap: 12px; }
+#class-browser .activity-group-toolbar > span { white-space: nowrap; }
+#class-grades-tbody td:nth-child(n+3) { text-align: center; }
+#class-grades-tbody input { text-align: center; }
+#class-browser .activity-dialog { position: fixed; inset: 0; margin: auto; width: min(480px, calc(100vw - 32px)); box-sizing: border-box; padding: 24px; border: 1px solid #e5dccd; border-radius: 12px; max-height: calc(100dvh - 32px); overflow: auto; }
+#class-browser .activity-dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
+#class-browser .activity-dialog .activity-editor { display: grid; align-items: stretch; gap: 16px; margin: 0; padding: 0; border: 0; }
+#class-browser .activity-dialog input { box-sizing: border-box; width: 100%; }
+#class-browser .activity-editor-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+#class-browser .activity-editor-actions { display: flex; gap: 8px; margin-left: auto; }
+#class-browser .activity-delete { color: #b42318; border-color: #e8b4b0; }
+#class-browser .class-browser-table th[rowspan="3"]:nth-child(n+3) { text-align: center; }
+
+#class-browser .activity-manager { display: grid; gap: 16px; }
+#class-browser .activity-manager-group { display: grid; gap: 8px; }
+#class-browser .activity-manager-row { display: flex; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px solid #e5dccd; }
+#class-browser .activity-manager-info { flex: 1; min-width: 0; display: grid; gap: 4px; overflow-wrap: anywhere; }
+#class-browser .activity-manager-info small { color: #687675; }
+#class-browser .activity-manager-row .filter-btn { flex: 0 0 auto; }
+#class-browser .activity-number { vertical-align: middle; height: 76px; box-sizing: border-box; }
+
+#class-browser .class-toolbar-actions { display: flex; align-items: flex-end; justify-content: flex-end; gap: 16px; margin-left: auto; }
+#class-browser .class-toolbar-actions > .filter-btn,
+#class-browser .class-toolbar-actions select { box-sizing: border-box; height: 44px; border-radius: 8px; }
+#class-browser .class-toolbar-actions > .filter-btn { justify-content: center; padding: 10px 14px; }
+#class-browser .class-toolbar-actions label { display: grid; gap: 6px; }
+#class-browser .activity-manager-info label { display: grid; gap: 6px; }
+#class-browser .activity-manager-info input { padding: 8px; border: 1px solid #e5dccd; border-radius: 6px; font: inherit; }
+@media (max-width: 480px) {
+    #class-browser .class-toolbar-actions { gap: 8px; }
+    #class-browser .class-toolbar-actions .filter-btn { padding: 8px; }
+    #class-browser .class-toolbar-actions label { font-size: 0.8rem; }
+}
+
+#class-browser .activity-score-cell { width: clamp(4rem, 8vw, 5rem); max-width: 100%; margin-inline: auto; }
+#class-browser .activity-score-input { box-sizing: border-box; display: block; width: 100%; min-width: 0; height: 44px; padding: 6px; text-align: center; border: 1px solid #c4ced8; border-radius: 6px; background: #fff; font: inherit; font-size: 16px; font-variant-numeric: tabular-nums; appearance: textfield; -moz-appearance: textfield; }
+#class-browser .activity-score-input::-webkit-inner-spin-button,
+#class-browser .activity-score-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+#class-browser .activity-max,
+#class-browser .activity-number,
+#class-grades-tbody td:nth-child(n+3) { padding-inline: 12px; text-align: center; }
+#class-browser .class-table-scroll { max-width: 100%; overscroll-behavior-x: contain; }
+#class-browser .activity-score-input:focus { outline: 2px solid #397ab8; outline-offset: 1px; }
+#class-browser input.state-error { border: 2px solid #b42318; background: #fff0ef; color: #9c1c13; }
+#class-browser .activity-score-error { display: block; margin-top: 5px; color: #b42318; font-size: 0.75rem; white-space: normal; }
+#class-browser .score-tools { margin-top: 16px; }
+#class-browser .activity-score-input:disabled { background: #f3f3f3; cursor: not-allowed; }
