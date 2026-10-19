@@ -1,369 +1,524 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Admin Dashboard — Hope Workspace</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="css/dashboard.css">
-  <link rel="stylesheet" href="css/admin-dashboard.css">
-  <link rel="stylesheet" href="css/profile.css">
-  <link rel="stylesheet" href="css/section-subjects.css">
-</head>
-<body>
-  <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
-    <i class="bi bi-chevron-right"></i>
-  </button>
-  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Admin Dashboard — Hope Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+    />
+    <link rel="stylesheet" href="css/dashboard.css" />
+    <link rel="stylesheet" href="css/admin-dashboard.css" />
+    <link rel="stylesheet" href="css/profile.css" />
+    <link rel="stylesheet" href="css/section-subjects.css" />
+  </head>
+  <body>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
+      <i class="bi bi-chevron-right"></i>
+    </button>
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
-  <div class="dashboard">
-    <aside class="sidebar">
-      <div class="sidebar-brand">
-        <img src="hope.png" alt="Hope" class="sidebar-logo">
-        <span class="sidebar-brand-name">Hope</span>
-      </div>
-
-      <nav class="sidebar-nav">
-        <button class="nav-item active" data-tab="teachers">
-          <i class="bi bi-people-fill"></i>
-          <span>Teachers</span>
-        </button>
-        <button class="nav-item" data-tab="classes">
-          <i class="bi bi-diagram-3-fill"></i>
-          <span>Classes</span>
-        </button>
-        <button class="nav-item" data-tab="subjects">
-          <i class="bi bi-journal-bookmark-fill"></i>
-          <span>Subjects</span>
-        </button>
-      </nav>
-
-      <div class="sidebar-user">
-        <button type="button" class="sidebar-profile-link nav-item" data-tab="profile" aria-label="Open my profile">
-          <div class="user-avatar"><i class="bi bi-shield-lock-fill"></i></div>
-          <div class="user-info">
-            <span class="user-name" id="user-name">Admin</span>
-            <span class="user-role">Super Admin</span>
-          </div>
-        </button>
-        <button class="logout-btn" id="logout-btn" aria-label="Log out">
-          <i class="bi bi-box-arrow-right"></i>
-        </button>
-      </div>
-    </aside>
-
-    <main class="main-content">
-
-      <!-- TEACHERS TAB -->
-      <section class="tab-panel" id="tab-teachers">
-        <header class="content-header">
-          <div>
-            <h1>Teachers</h1>
-            <p class="content-subtitle">Manage teacher accounts, advisories, and access.</p>
-          </div>
-          <div class="teacher-actions">
-            <button class="btn-secondary" id="open-assign-roles"><i class="bi bi-person-check"></i> Assign Roles</button>
-            <button class="btn-primary" id="open-add-teacher"><i class="bi bi-plus-lg"></i> Add teacher</button>
-          </div>
-        </header>
-        <p id="teacher-status" class="assignment-status" role="status" hidden></p>
-        <button type="button" id="retry-teachers" class="btn-secondary" hidden>Retry loading tables</button>
-        <section class="grades-table-section teacher-table-section" tabindex="0" aria-label="Teachers and their assignments">
-          <table class="grades-table teacher-table">
-            <thead>
-              <tr>
-                <th>Teacher</th>
-                <th>Email</th>
-                <th>Roles</th>
-                <th>Class & Section</th>
-                <th>Assign Subject</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="teachers-tbody"></tbody>
-          </table>
-        </section>
-      </section>
-
-      <!-- CLASSES TAB -->
-      <section class="tab-panel hidden" id="tab-classes">
-        <header class="content-header">
-          <div>
-            <h1>Classes</h1>
-            <p class="content-subtitle">Create classes and assign a Class Adviser.</p>
-          </div>
-          <button class="btn-primary" id="open-add-class"><i class="bi bi-plus-lg"></i> Add class</button>
-        </header>
-
-        <div class="table-filters" role="group" aria-label="Filter classes">
-          <div><label for="filter-class-name">Class Name</label><select id="filter-class-name"><option value="">All classes</option></select></div>
-          <div><label for="filter-class-grade">Grade Level</label><select id="filter-class-grade"><option value="">All grade levels</option></select></div>
-          <div><label for="filter-class-section">Section</label><select id="filter-class-section"><option value="">All sections</option></select></div>
+    <div class="dashboard">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <img src="hope.png" alt="Hope" class="sidebar-logo" />
+          <span class="sidebar-brand-name">Hope</span>
         </div>
 
-        <section class="grades-table-section">
-          <table class="grades-table">
-            <thead>
-              <tr>
-                <th>Class Name</th>
-                <th>Grade Level</th>
-                <th>Section</th>
-                <th>Adviser</th>
-                <th>Subjects &amp; teachers</th>
-              </tr>
-            </thead>
-            <tbody id="classes-tbody"></tbody>
-          </table>
-        </section>
-      </section>
+        <nav class="sidebar-nav">
+          <button class="nav-item active" data-tab="teachers">
+            <i class="bi bi-people-fill"></i>
+            <span>Teachers</span>
+          </button>
+          <button class="nav-item" data-tab="classes">
+            <i class="bi bi-diagram-3-fill"></i>
+            <span>Classes</span>
+          </button>
+          <button class="nav-item" data-tab="subjects">
+            <i class="bi bi-journal-bookmark-fill"></i>
+            <span>Subjects</span>
+          </button>
+        </nav>
 
-      <!-- SUBJECTS TAB -->
-      <section class="tab-panel hidden" id="tab-subjects">
-        <header class="content-header">
-          <div>
-            <h1>Subjects</h1>
-            <p class="content-subtitle">Create subjects and assign a Subject Teacher.</p>
-          </div>
-          <button class="btn-primary" id="open-add-subject"><i class="bi bi-plus-lg"></i> Add subject</button>
-        </header>
-
-        <div class="table-filters" role="group" aria-label="Filter subjects">
-          <div><label for="filter-subject-class">Class &amp; Section</label><select id="filter-subject-class"><option value="">All classes and sections</option></select></div>
+        <div class="sidebar-user">
+          <button
+            type="button"
+            class="sidebar-profile-link nav-item"
+            data-tab="profile"
+            aria-label="Open my profile"
+          >
+            <div class="user-avatar"><i class="bi bi-shield-lock-fill"></i></div>
+            <div class="user-info">
+              <span class="user-name" id="user-name">Admin</span>
+              <span class="user-role">Super Admin</span>
+            </div>
+          </button>
+          <button class="logout-btn" id="logout-btn" aria-label="Log out">
+            <i class="bi bi-box-arrow-right"></i>
+          </button>
         </div>
+      </aside>
 
-        <section class="grades-table-section">
-          <table class="grades-table">
-            <thead>
-              <tr>
-                <th>Subject name</th>
-                <th>Class & Section</th>
-                <th>Teacher</th>
-              </tr>
-            </thead>
-            <tbody id="subjects-tbody"></tbody>
-          </table>
+      <main class="main-content">
+        <!-- TEACHERS TAB -->
+        <section class="tab-panel" id="tab-teachers">
+          <header class="content-header">
+            <div>
+              <h1>Teachers</h1>
+              <p class="content-subtitle">Manage teacher accounts, advisories, and access.</p>
+            </div>
+            <div class="teacher-actions">
+              <button class="btn-secondary" id="open-assign-roles">
+                <i class="bi bi-person-check"></i>
+                Assign Roles
+              </button>
+              <button class="btn-primary" id="open-add-teacher">
+                <i class="bi bi-plus-lg"></i>
+                Add teacher
+              </button>
+            </div>
+          </header>
+          <p id="teacher-status" class="assignment-status" role="status" hidden></p>
+          <button type="button" id="retry-teachers" class="btn-secondary" hidden>
+            Retry loading tables
+          </button>
+          <section
+            class="grades-table-section teacher-table-section"
+            tabindex="0"
+            aria-label="Teachers and their assignments"
+          >
+            <table class="grades-table teacher-table">
+              <thead>
+                <tr>
+                  <th>Teacher</th>
+                  <th>Email</th>
+                  <th>Roles</th>
+                  <th>Class & Section</th>
+                  <th>Assign Subject</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="teachers-tbody"></tbody>
+            </table>
+          </section>
         </section>
-      </section>
 
-      <!-- MY PROFILE TAB -->
-      <section class="tab-panel hidden" id="tab-profile">
-        <header class="content-header">
-          <div>
-            <h1>My Profile</h1>
-            <p class="content-subtitle">Update your name, photo, and password.</p>
-          </div>
-        </header>
+        <!-- CLASSES TAB -->
+        <section class="tab-panel hidden" id="tab-classes">
+          <header class="content-header">
+            <div>
+              <h1>Classes</h1>
+              <p class="content-subtitle">Create classes and assign a Class Adviser.</p>
+            </div>
+            <div class="teacher-actions">
+              <button type="button" class="btn-clear-data" id="clear-all-classes" disabled>
+                <i class="bi bi-trash3" aria-hidden="true"></i>
+                Clear All Data
+              </button>
+              <button class="btn-primary" id="open-add-class">
+                <i class="bi bi-plus-lg"></i>
+                Add class
+              </button>
+            </div>
+          </header>
 
-        <div class="settings-banner" id="profile-form-banner" hidden></div>
-
-        <div class="settings-tabs">
-          <button class="settings-tab active" data-tab="photo">Photo</button>
-          <button class="settings-tab" data-tab="name">Name</button>
-          <button class="settings-tab" data-tab="password">Password</button>
-        </div>
-
-        <section class="settings-panel" id="tab-photo">
-          <div class="settings-card">
-            <h2>Profile photo</h2>
-            <div class="avatar-upload">
-              <div class="avatar-preview" id="avatar-preview">
-                <i class="bi bi-person-fill"></i>
-              </div>
-              <div class="avatar-upload-actions">
-                <label class="btn-secondary" for="photo-input">Choose photo</label>
-                <input type="file" id="photo-input" accept="image/*">
-                <p class="field-hint">JPG or PNG, up to 2MB.</p>
-              </div>
+          <div class="table-filters" role="group" aria-label="Filter classes">
+            <div>
+              <label for="filter-class-name">Class Name</label>
+              <select id="filter-class-name">
+                <option value="">All classes</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-class-grade">Grade Level</label>
+              <select id="filter-class-grade">
+                <option value="">All grade levels</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-class-section">Section</label>
+              <select id="filter-class-section">
+                <option value="">All sections</option>
+              </select>
             </div>
           </div>
+
+          <section class="grades-table-section">
+            <table class="grades-table">
+              <thead>
+                <tr>
+                  <th>Class Name</th>
+                  <th>Grade Level</th>
+                  <th>Section</th>
+                  <th>Adviser</th>
+                  <th>Subjects &amp; teachers</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="classes-tbody"></tbody>
+            </table>
+          </section>
         </section>
 
-        <section class="settings-panel hidden" id="tab-name">
-          <div class="settings-card">
-            <h2>Name</h2>
-            <form id="name-form">
-              <div class="field">
-                <label for="username">Display name</label>
-                <input type="text" id="username" required>
-              </div>
-              <button type="submit" class="btn-primary">Save name</button>
-            </form>
+        <!-- SUBJECTS TAB -->
+        <section class="tab-panel hidden" id="tab-subjects">
+          <header class="content-header">
+            <div>
+              <h1>Subjects</h1>
+              <p class="content-subtitle">Create subjects and assign a Subject Teacher.</p>
+            </div>
+            <div class="teacher-actions">
+              <button type="button" class="btn-clear-data" id="clear-all-subjects" disabled>
+                <i class="bi bi-trash3" aria-hidden="true"></i>
+                Clear All Data
+              </button>
+              <button class="btn-primary" id="open-add-subject">
+                <i class="bi bi-plus-lg"></i>
+                Add subject
+              </button>
+            </div>
+          </header>
+
+          <div class="table-filters" role="group" aria-label="Filter subjects">
+            <div>
+              <label for="filter-subject-class">Class &amp; Section</label>
+              <select id="filter-subject-class">
+                <option value="">All classes and sections</option>
+              </select>
+            </div>
           </div>
+
+          <section class="grades-table-section">
+            <table class="grades-table">
+              <thead>
+                <tr>
+                  <th>Subject name</th>
+                  <th>Class & Section</th>
+                  <th>Teacher</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="subjects-tbody"></tbody>
+            </table>
+          </section>
         </section>
 
-        <section class="settings-panel hidden" id="tab-password">
-          <div class="settings-card">
-            <h2>Password</h2>
-            <form id="password-form">
-              <div class="field">
-                <label for="current-password">Current password</label>
-                <input type="password" id="current-password" required>
-              </div>
-              <div class="field">
-                <label for="new-password">New password</label>
-                <input type="password" id="new-password" required minlength="8" maxlength="72">
-                <p class="field-hint">At least 8 characters, with at least one letter and one number.</p>
-              </div>
-              <div class="field">
-                <label for="confirm-new-password">Confirm new password</label>
-                <input type="password" id="confirm-new-password" required minlength="8" maxlength="72">
-              </div>
-              <button type="submit" class="btn-primary">Change password</button>
-            </form>
+        <!-- MY PROFILE TAB -->
+        <section class="tab-panel hidden" id="tab-profile">
+          <header class="content-header">
+            <div>
+              <h1>My Profile</h1>
+              <p class="content-subtitle">Update your name, photo, and password.</p>
+            </div>
+          </header>
+
+          <div class="settings-banner" id="profile-form-banner" hidden></div>
+
+          <div class="settings-tabs">
+            <button class="settings-tab active" data-tab="photo">Photo</button>
+            <button class="settings-tab" data-tab="name">Name</button>
+            <button class="settings-tab" data-tab="password">Password</button>
           </div>
+
+          <section class="settings-panel" id="tab-photo">
+            <div class="settings-card">
+              <h2>Profile photo</h2>
+              <div class="avatar-upload">
+                <div class="avatar-preview" id="avatar-preview">
+                  <i class="bi bi-person-fill"></i>
+                </div>
+                <div class="avatar-upload-actions">
+                  <label class="btn-secondary" for="photo-input">Choose photo</label>
+                  <input type="file" id="photo-input" accept="image/*" />
+                  <p class="field-hint">JPG or PNG, up to 2MB.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-panel hidden" id="tab-name">
+            <div class="settings-card">
+              <h2>Name</h2>
+              <form id="name-form">
+                <div class="field">
+                  <label for="username">Display name</label>
+                  <input type="text" id="username" required />
+                </div>
+                <button type="submit" class="btn-primary">Save name</button>
+              </form>
+            </div>
+          </section>
+
+          <section class="settings-panel hidden" id="tab-password">
+            <div class="settings-card">
+              <h2>Password</h2>
+              <form id="password-form">
+                <div class="field">
+                  <label for="current-password">Current password</label>
+                  <input type="password" id="current-password" required />
+                </div>
+                <div class="field">
+                  <label for="new-password">New password</label>
+                  <input type="password" id="new-password" required minlength="8" maxlength="72" />
+                  <p class="field-hint">
+                    At least 8 characters, with at least one letter and one number.
+                  </p>
+                </div>
+                <div class="field">
+                  <label for="confirm-new-password">Confirm new password</label>
+                  <input
+                    type="password"
+                    id="confirm-new-password"
+                    required
+                    minlength="8"
+                    maxlength="72"
+                  />
+                </div>
+                <button type="submit" class="btn-primary">Change password</button>
+              </form>
+            </div>
+          </section>
         </section>
-      </section>
+      </main>
+    </div>
 
-    </main>
-  </div>
+    <dialog
+      id="clear-data-dialog"
+      class="clear-data-dialog"
+      aria-labelledby="clear-data-title"
+      aria-describedby="clear-data-description"
+    >
+      <form id="clear-data-form">
+        <span class="clear-data-icon" aria-hidden="true"><i class="bi bi-trash3"></i></span>
+        <h2 id="clear-data-title">Clear data?</h2>
+        <p id="clear-data-target" class="clear-data-target"></p>
+        <p id="clear-data-description"></p>
+        <p class="clear-data-warning">
+          This permanently deletes the selected blocks and linked records from the admin, class
+          adviser, and subject teacher pages. This cannot be undone.
+        </p>
+        <div class="field">
+          <label for="clear-data-confirmation">Type CLEAR to confirm</label>
+          <input id="clear-data-confirmation" autocomplete="off" required pattern="CLEAR" />
+        </div>
+        <p id="clear-data-error" role="alert" hidden></p>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancel-clear-data">Cancel</button>
+          <button type="submit" class="btn-clear-data is-solid" id="confirm-clear-data" disabled>
+            Clear Data Permanently
+          </button>
+        </div>
+      </form>
+    </dialog>
 
-  <!-- MODAL: Assign Roles -->
-  <div class="modal-overlay hidden" id="modal-assign-roles">
-    <div class="modal roles-modal" role="dialog" aria-modal="true" aria-labelledby="assign-roles-title" aria-describedby="assign-roles-help">
-      <p class="roles-eyebrow">TEACHER MANAGEMENT</p>
-      <h2 id="assign-roles-title">Edit roles &amp; assignments</h2>
-      <p class="assignment-hint" id="assign-roles-help">Choose Class Advisor, Subject Teacher, or both. Changes take effect when you save.</p>
-      <div class="roles-teacher-card" id="roles-teacher-card" hidden>
-        <span class="roles-avatar" aria-hidden="true"><i class="bi bi-person"></i></span>
-        <div><strong id="roles-teacher-name"></strong><span id="roles-teacher-email"></span></div>
+    <!-- MODAL: Assign Roles -->
+    <div class="modal-overlay hidden" id="modal-assign-roles">
+      <div
+        class="modal roles-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="assign-roles-title"
+        aria-describedby="assign-roles-help"
+      >
+        <p class="roles-eyebrow">TEACHER MANAGEMENT</p>
+        <h2 id="assign-roles-title">Edit roles &amp; assignments</h2>
+        <p class="assignment-hint" id="assign-roles-help">
+          Choose Class Advisor, Subject Teacher, or both. Changes take effect when you save.
+        </p>
+        <div class="roles-teacher-card" id="roles-teacher-card" hidden>
+          <span class="roles-avatar" aria-hidden="true"><i class="bi bi-person"></i></span>
+          <div>
+            <strong id="roles-teacher-name"></strong>
+            <span id="roles-teacher-email"></span>
+          </div>
+        </div>
+        <p class="assignment-status" id="roles-status" role="status" hidden></p>
+        <button type="button" class="btn-secondary" id="retry-roles" hidden>
+          Reload assignments
+        </button>
+        <form id="form-assign-roles">
+          <fieldset id="roles-fields" disabled>
+            <div class="field">
+              <label for="roles-teacher">Teacher</label>
+              <select id="roles-teacher" required></select>
+            </div>
+            <div class="role-section">
+              <label class="role-choice">
+                <input type="checkbox" id="role-advisor" />
+                <span>
+                  <strong>Class Advisor</strong>
+                  <small>Manage a homeroom and its student records.</small>
+                </span>
+              </label>
+              <div class="field" id="advisor-assignment" hidden>
+                <label for="roles-homeroom">Homeroom</label>
+                <select id="roles-homeroom"></select>
+              </div>
+            </div>
+            <div class="role-section">
+              <label class="role-choice">
+                <input type="checkbox" id="role-subject-teacher" />
+                <span>
+                  <strong>Subject Teacher</strong>
+                  <small>Teach assigned subjects and manage their grades.</small>
+                </span>
+              </label>
+              <div id="subject-assignments" hidden>
+                <p class="assignment-hint">Select the subjects this teacher will teach.</p>
+                <div id="roles-subjects" class="subject-choices"></div>
+              </div>
+            </div>
+            <p class="assignment-hint roles-save-note">
+              Unchecking a role removes its assignments when saved. Classes and subjects assigned to
+              another teacher are unavailable.
+            </p>
+          </fieldset>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" id="toggle-teacher-account" hidden disabled>
+              Deactivate
+            </button>
+            <button type="button" class="btn-secondary" id="cancel-roles">Cancel</button>
+            <button type="submit" class="btn-primary" id="save-roles" disabled>Save changes</button>
+          </div>
+        </form>
       </div>
-      <p class="assignment-status" id="roles-status" role="status" hidden></p>
-      <button type="button" class="btn-secondary" id="retry-roles" hidden>Reload assignments</button>
-      <form id="form-assign-roles">
-        <fieldset id="roles-fields" disabled>
-          <div class="field"><label for="roles-teacher">Teacher</label><select id="roles-teacher" required></select></div>
-          <div class="role-section">
-            <label class="role-choice"><input type="checkbox" id="role-advisor"> <span><strong>Class Advisor</strong><small>Manage a homeroom and its student records.</small></span></label>
-            <div class="field" id="advisor-assignment" hidden>
-              <label for="roles-homeroom">Homeroom</label>
-              <select id="roles-homeroom"></select>
+    </div>
+
+    <!-- MODAL: Add Teacher -->
+    <div class="modal-overlay hidden" id="modal-add-teacher">
+      <div class="modal">
+        <h2>Add teacher</h2>
+        <form id="form-add-teacher">
+          <div class="field">
+            <label>Username</label>
+            <input type="text" id="new-teacher-username" required />
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="new-teacher-email" required />
+          </div>
+          <div class="field">
+            <label for="new-teacher-password">Temporary password</label>
+            <div class="teacher-password-field">
+              <input
+                type="password"
+                id="new-teacher-password"
+                autocomplete="new-password"
+                required
+              />
+              <button
+                type="button"
+                class="teacher-password-toggle"
+                id="toggle-teacher-password"
+                aria-label="Show password"
+                aria-controls="new-teacher-password"
+                aria-pressed="false"
+              >
+                <i class="bi bi-eye-slash-fill" aria-hidden="true"></i>
+              </button>
             </div>
           </div>
-          <div class="role-section">
-            <label class="role-choice"><input type="checkbox" id="role-subject-teacher"> <span><strong>Subject Teacher</strong><small>Teach assigned subjects and manage their grades.</small></span></label>
-            <div id="subject-assignments" hidden>
-              <p class="assignment-hint">Select the subjects this teacher will teach.</p>
-              <div id="roles-subjects" class="subject-choices"></div>
-            </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary modal-cancel">Cancel</button>
+            <button type="submit" class="btn-primary">Create</button>
           </div>
-          <p class="assignment-hint roles-save-note">Unchecking a role removes its assignments when saved. Classes and subjects assigned to another teacher are unavailable.</p>
-        </fieldset>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary" id="toggle-teacher-account" hidden disabled>Deactivate</button>
-          <button type="button" class="btn-secondary" id="cancel-roles">Cancel</button>
-          <button type="submit" class="btn-primary" id="save-roles" disabled>Save changes</button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
-  </div>
 
-  <!-- MODAL: Add Teacher -->
-  <div class="modal-overlay hidden" id="modal-add-teacher">
-    <div class="modal">
-      <h2>Add teacher</h2>
-      <form id="form-add-teacher">
-        <div class="field">
-          <label>Username</label>
-          <input type="text" id="new-teacher-username" required>
-        </div>
-        <div class="field">
-          <label>Email</label>
-          <input type="email" id="new-teacher-email" required>
-        </div>
-        <div class="field">
-          <label for="new-teacher-password">Temporary password</label>
-          <div class="teacher-password-field">
-            <input type="password" id="new-teacher-password" autocomplete="new-password" required>
-            <button type="button" class="teacher-password-toggle" id="toggle-teacher-password" aria-label="Show password" aria-controls="new-teacher-password" aria-pressed="false"><i class="bi bi-eye-slash-fill" aria-hidden="true"></i></button>
+    <!-- MODAL: Add Class -->
+    <div class="modal-overlay hidden" id="modal-add-class">
+      <div class="modal">
+        <h2>Add class</h2>
+        <form id="form-add-class">
+          <div class="field">
+            <label>Class name</label>
+            <input
+              type="text"
+              id="new-class-name"
+              placeholder="e.g. Earth and Life Science"
+              required
+            />
           </div>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary modal-cancel">Cancel</button>
-          <button type="submit" class="btn-primary">Create</button>
-        </div>
-      </form>
+          <div class="field">
+            <label id="grade-picker-label" for="new-class-grade-level">Grade level</label>
+            <details class="grade-picker" id="grade-picker">
+              <summary aria-labelledby="grade-picker-label grade-picker-value">
+                <span id="grade-picker-value">Choose grade level</span>
+              </summary>
+              <select id="new-class-grade-level" size="5" required aria-label="Grade level">
+                <option value="" disabled selected>Choose grade level</option>
+                <option>Kinder</option>
+                <option>Grade 1</option>
+                <option>Grade 2</option>
+                <option>Grade 3</option>
+                <option>Grade 4</option>
+                <option>Grade 5</option>
+                <option>Grade 6</option>
+                <option>Grade 7</option>
+                <option>Grade 8</option>
+                <option>Grade 9</option>
+                <option>Grade 10</option>
+                <option>Grade 11</option>
+                <option>Grade 12</option>
+              </select>
+            </details>
+          </div>
+          <div class="field">
+            <label for="new-class-section">Section</label>
+            <input id="new-class-section" maxlength="100" placeholder="e.g. Diamond" required />
+          </div>
+          <div class="field">
+            <label>Adviser</label>
+            <select id="new-class-adviser"></select>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary modal-cancel">Cancel</button>
+            <button type="submit" class="btn-primary">Create</button>
+          </div>
+        </form>
+      </div>
     </div>
-  </div>
 
-  <!-- MODAL: Add Class -->
-  <div class="modal-overlay hidden" id="modal-add-class">
-    <div class="modal">
-      <h2>Add class</h2>
-      <form id="form-add-class">
-        <div class="field">
-          <label>Class name</label>
-          <input type="text" id="new-class-name" placeholder="e.g. Earth and Life Science" required>
-        </div>
-        <div class="field">
-          <label id="grade-picker-label" for="new-class-grade-level">Grade level</label>
-          <details class="grade-picker" id="grade-picker">
-            <summary aria-labelledby="grade-picker-label grade-picker-value"><span id="grade-picker-value">Choose grade level</span></summary>
-            <select id="new-class-grade-level" size="5" required aria-label="Grade level">
-              <option value="" disabled selected>Choose grade level</option>
-              <option>Kinder</option>
-              <option>Grade 1</option>
-              <option>Grade 2</option>
-              <option>Grade 3</option>
-              <option>Grade 4</option>
-              <option>Grade 5</option>
-              <option>Grade 6</option>
-              <option>Grade 7</option>
-              <option>Grade 8</option>
-              <option>Grade 9</option>
-              <option>Grade 10</option>
-              <option>Grade 11</option>
-              <option>Grade 12</option>
-            </select>
-          </details>
-        </div>
-        <div class="field"><label for="new-class-section">Section</label><input id="new-class-section" maxlength="100" placeholder="e.g. Diamond" required></div>
-        <div class="field">
-          <label>Adviser</label>
-          <select id="new-class-adviser"></select>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary modal-cancel">Cancel</button>
-          <button type="submit" class="btn-primary">Create</button>
-        </div>
-      </form>
+    <!-- MODAL: Add Subject -->
+    <div class="modal-overlay hidden" id="modal-add-subject">
+      <div class="modal">
+        <h2>Add subject</h2>
+        <form id="form-add-subject">
+          <div class="field">
+            <label>Subject name</label>
+            <input type="text" id="new-subject-name" placeholder="e.g. Algebra II" required />
+          </div>
+          <div class="field">
+            <label>Class & Section</label>
+            <select id="new-subject-class" required></select>
+          </div>
+          <div class="field">
+            <label>Teacher</label>
+            <select id="new-subject-teacher"></select>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary modal-cancel">Cancel</button>
+            <button type="submit" class="btn-primary">Create</button>
+          </div>
+        </form>
+      </div>
     </div>
-  </div>
 
-  <!-- MODAL: Add Subject -->
-  <div class="modal-overlay hidden" id="modal-add-subject">
-    <div class="modal">
-      <h2>Add subject</h2>
-      <form id="form-add-subject">
-        <div class="field">
-          <label>Subject name</label>
-          <input type="text" id="new-subject-name" placeholder="e.g. Algebra II" required>
-        </div>
-        <div class="field">
-          <label>Class & Section</label>
-          <select id="new-subject-class" required></select>
-        </div>
-        <div class="field">
-          <label>Teacher</label>
-          <select id="new-subject-teacher"></select>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary modal-cancel">Cancel</button>
-          <button type="submit" class="btn-primary">Create</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <script src="js/config.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/sidebar-toggle.js"></script>
-  <script src="js/academic-ui.js"></script>
-  <script src="js/section-subjects.js"></script>
-  <script src="js/admin-dashboard.js"></script>
-  <script src="js/admin-roles.js"></script>
-</body>
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar-toggle.js"></script>
+    <script src="js/academic-ui.js"></script>
+    <script src="js/section-subjects.js"></script>
+    <script src="js/admin-dashboard.js"></script>
+    <script src="js/admin-roles.js"></script>
+  </body>
 </html>

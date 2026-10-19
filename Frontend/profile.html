@@ -1,131 +1,197 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>My Profile — Hope Workspace</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="css/dashboard.css">
-  <link rel="stylesheet" href="css/profile.css">
-  <script src="js/workspace-shell.js"></script>
-</head>
-<body>
-  <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
-    <i class="bi bi-chevron-right"></i>
-  </button>
-  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>My Profile — Hope Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+    />
+    <link rel="stylesheet" href="css/dashboard.css" />
+    <link rel="stylesheet" href="css/profile.css" />
+    <script src="js/workspace-shell.js"></script>
+  </head>
+  <body>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
+      <i class="bi bi-chevron-right"></i>
+    </button>
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
-  <div class="dashboard">
-    <aside class="sidebar">
-      <div class="sidebar-brand">
-        <img src="hope.png" alt="Hope" class="sidebar-logo">
-        <span class="sidebar-brand-name">Hope</span>
-      </div>
+    <div class="dashboard">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <img src="hope.png" alt="Hope" class="sidebar-logo" />
+          <span class="sidebar-brand-name">Hope</span>
+        </div>
 
-      <nav class="sidebar-nav" aria-label="Main navigation">
-        <a href="dashboard.html" class="nav-item"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
-        <a href="dashboard.html#class" class="nav-item" hidden><i class="bi bi-journal-bookmark"></i><span>Class</span></a>
-        <a href="dashboard.html#requests" class="nav-item"><i class="bi bi-arrow-repeat"></i><span>Grade Edit Request</span></a>
-      </nav>
+        <nav class="sidebar-nav" aria-label="Main navigation">
+          <a href="dashboard.html" class="nav-item">
+            <i class="bi bi-speedometer2"></i>
+            <span>Dashboard</span>
+          </a>
+          <a href="dashboard.html#class" class="nav-item" hidden>
+            <i class="bi bi-journal-bookmark"></i>
+            <span>Class</span>
+          </a>
+          <a href="dashboard.html#requests" class="nav-item">
+            <i class="bi bi-arrow-repeat"></i>
+            <span>Grade Edit Request</span>
+          </a>
+        </nav>
 
-      <div class="sidebar-user">
-        <a href="profile.html" class="sidebar-profile-link" aria-label="Open my profile">
-          <div class="user-avatar"><i class="bi bi-person-fill"></i></div>
-          <div class="user-info">
-            <span class="user-name" id="user-name">Teacher</span>
-            <span class="user-role">Subject Teacher</span>
+        <div class="sidebar-user">
+          <a href="profile.html" class="sidebar-profile-link" aria-label="Open my profile">
+            <div class="user-avatar"><i class="bi bi-person-fill"></i></div>
+            <div class="user-info">
+              <span class="user-name" id="user-name">Teacher</span>
+              <span class="user-role">Subject Teacher</span>
+            </div>
+          </a>
+          <button class="logout-btn" id="logout-btn" aria-label="Log out">
+            <i class="bi bi-box-arrow-right"></i>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="content-header">
+          <div>
+            <h1>My Profile</h1>
+            <p class="content-subtitle">Update your name, photo, and password.</p>
           </div>
-        </a>
-        <button class="logout-btn" id="logout-btn" aria-label="Log out">
-          <i class="bi bi-box-arrow-right"></i>
-        </button>
-      </div>
-    </aside>
+        </header>
 
-    <main class="main-content">
-      <header class="content-header">
-        <div>
-          <h1>My Profile</h1>
-          <p class="content-subtitle">Update your name, photo, and password.</p>
+        <div class="settings-banner" id="form-banner" hidden></div>
+
+        <div class="settings-tabs">
+          <button class="settings-tab active" data-tab="photo">Photo</button>
+          <button class="settings-tab" data-tab="name">Name</button>
+          <button class="settings-tab" data-tab="password">Password</button>
         </div>
-      </header>
 
-      <div class="settings-banner" id="form-banner" hidden></div>
-
-      <div class="settings-tabs">
-        <button class="settings-tab active" data-tab="photo">Photo</button>
-        <button class="settings-tab" data-tab="name">Name</button>
-        <button class="settings-tab" data-tab="password">Password</button>
-      </div>
-
-      <section class="settings-panel" id="tab-photo">
-        <div class="settings-card">
-          <h2>Profile photo</h2>
-          <div class="avatar-upload">
-            <div class="avatar-preview" id="avatar-preview">
-              <i class="bi bi-person-fill"></i>
-            </div>
-            <div class="avatar-upload-actions">
-              <label class="btn-secondary" for="photo-input">Choose photo</label>
-              <input type="file" id="photo-input" accept="image/*">
-              <p class="field-hint">JPG or PNG, up to 2MB.</p>
+        <section class="settings-panel" id="tab-photo">
+          <div class="settings-card">
+            <h2>Profile photo</h2>
+            <div class="avatar-upload">
+              <div class="avatar-preview" id="avatar-preview">
+                <i class="bi bi-person-fill"></i>
+              </div>
+              <div class="avatar-upload-actions">
+                <label class="btn-secondary" for="photo-input">Choose photo</label>
+                <input type="file" id="photo-input" accept="image/*" />
+                <p class="field-hint">JPG or PNG, up to 2MB.</p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section class="settings-panel hidden" id="tab-name">
-        <div class="settings-card">
-          <h2>Name</h2>
-          <form id="name-form">
-            <div class="field">
-              <label for="username">Display name</label>
-              <input type="text" id="username" required>
-            </div>
-            <button type="submit" class="btn-primary">Save name</button>
-          </form>
-        </div>
-      </section>
+        <section class="settings-panel hidden" id="tab-name">
+          <div class="settings-card">
+            <h2>Name</h2>
+            <form id="name-form">
+              <div class="field">
+                <label for="username">Display name</label>
+                <input type="text" id="username" required />
+              </div>
+              <button type="submit" class="btn-primary">Save name</button>
+            </form>
+          </div>
+        </section>
 
-      <section class="settings-panel hidden" id="tab-password">
-        <div class="settings-card">
-          <h2>Password</h2>
-          <form id="password-form">
-            <div class="field">
-              <label for="current-password">Current password</label>
-              <div class="profile-password-field">
-                <input type="password" id="current-password" required autocomplete="current-password">
-                <button type="button" class="profile-password-toggle" data-password-target="current-password" data-password-label="current password" aria-controls="current-password" aria-label="Show current password" aria-pressed="false"><i class="bi bi-eye-slash-fill" aria-hidden="true"></i></button>
+        <section class="settings-panel hidden" id="tab-password">
+          <div class="settings-card">
+            <h2>Password</h2>
+            <form id="password-form">
+              <div class="field">
+                <label for="current-password">Current password</label>
+                <div class="profile-password-field">
+                  <input
+                    type="password"
+                    id="current-password"
+                    required
+                    autocomplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    class="profile-password-toggle"
+                    data-password-target="current-password"
+                    data-password-label="current password"
+                    aria-controls="current-password"
+                    aria-label="Show current password"
+                    aria-pressed="false"
+                  >
+                    <i class="bi bi-eye-slash-fill" aria-hidden="true"></i>
+                  </button>
+                </div>
               </div>
-            </div>
-            <div class="field">
-              <label for="new-password">New password</label>
-              <div class="profile-password-field">
-                <input type="password" id="new-password" required minlength="8" maxlength="72" autocomplete="new-password">
-                <button type="button" class="profile-password-toggle" data-password-target="new-password" data-password-label="new password" aria-controls="new-password" aria-label="Show new password" aria-pressed="false"><i class="bi bi-eye-slash-fill" aria-hidden="true"></i></button>
+              <div class="field">
+                <label for="new-password">New password</label>
+                <div class="profile-password-field">
+                  <input
+                    type="password"
+                    id="new-password"
+                    required
+                    minlength="8"
+                    maxlength="72"
+                    autocomplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    class="profile-password-toggle"
+                    data-password-target="new-password"
+                    data-password-label="new password"
+                    aria-controls="new-password"
+                    aria-label="Show new password"
+                    aria-pressed="false"
+                  >
+                    <i class="bi bi-eye-slash-fill" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <p class="field-hint">
+                  At least 8 characters, with at least one letter and one number.
+                </p>
               </div>
-              <p class="field-hint">At least 8 characters, with at least one letter and one number.</p>
-            </div>
-            <div class="field">
-              <label for="confirm-new-password">Confirm new password</label>
-              <div class="profile-password-field">
-                <input type="password" id="confirm-new-password" required minlength="8" maxlength="72" autocomplete="new-password">
-                <button type="button" class="profile-password-toggle" data-password-target="confirm-new-password" data-password-label="confirm new password" aria-controls="confirm-new-password" aria-label="Show confirm new password" aria-pressed="false"><i class="bi bi-eye-slash-fill" aria-hidden="true"></i></button>
+              <div class="field">
+                <label for="confirm-new-password">Confirm new password</label>
+                <div class="profile-password-field">
+                  <input
+                    type="password"
+                    id="confirm-new-password"
+                    required
+                    minlength="8"
+                    maxlength="72"
+                    autocomplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    class="profile-password-toggle"
+                    data-password-target="confirm-new-password"
+                    data-password-label="confirm new password"
+                    aria-controls="confirm-new-password"
+                    aria-label="Show confirm new password"
+                    aria-pressed="false"
+                  >
+                    <i class="bi bi-eye-slash-fill" aria-hidden="true"></i>
+                  </button>
+                </div>
               </div>
-            </div>
-            <button type="submit" class="btn-primary">Change password</button>
-          </form>
-        </div>
-      </section>
-    </main>
-  </div>
+              <button type="submit" class="btn-primary">Change password</button>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
 
-  <script src="js/config.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/sidebar-toggle.js"></script>
-  <script src="js/profile.js"></script>
-</body>
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar-toggle.js"></script>
+    <script src="js/profile.js"></script>
+  </body>
 </html>

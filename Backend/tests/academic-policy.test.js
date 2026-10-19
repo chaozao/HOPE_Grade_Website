@@ -7,7 +7,10 @@ test('grades require enrolled students, finite scores, and unique entries', () =
   assert.equal(P.validateGrades([entry], [id])[0].scores.hw1, 0);
   assert.throws(() => P.validateGrades([entry], []), { status: 403 });
   assert.throws(() => P.validateGrades([entry, entry], [id]));
-  for (const score of ['80', NaN, Infinity, -1, 101, undefined]) assert.throws(() => P.validateGrades([{ ...entry, scores: { ...entry.scores, hw1: score } }], [id]));
+  for (const score of ['80', NaN, Infinity, -1, 101, undefined])
+    assert.throws(() =>
+      P.validateGrades([{ ...entry, scores: { ...entry.scores, hw1: score } }], [id])
+    );
 });
 test('finalization requires complete roster; finalized grades and stale versions reject changes', () => {
   assert.throws(() => P.requireComplete([]));

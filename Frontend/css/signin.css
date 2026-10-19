@@ -6,18 +6,18 @@
 }
 
 :root {
-  --color-panel: #12292B;
+  --color-panel: #12292b;
   --color-panel-line: rgba(255, 255, 255, 0.07);
-  --color-page: #FBF8F3;
-  --color-text: #1A231F;
-  --color-muted: #6E7B76;
-  --color-border: #E4DED2;
-  --color-accent: #D98A33;
-  --color-accent-hover: #C57A26;
-  --color-error-bg: #FBEAE7;
-  --color-error-text: #A6402F;
-  --color-success-bg: #EAF3EA;
-  --color-success-text: #2F6B4F;
+  --color-page: #fbf8f3;
+  --color-text: #1a231f;
+  --color-muted: #6e7b76;
+  --color-border: #e4ded2;
+  --color-accent: #d98a33;
+  --color-accent-hover: #c57a26;
+  --color-error-bg: #fbeae7;
+  --color-error-text: #a6402f;
+  --color-success-bg: #eaf3ea;
+  --color-success-text: #2f6b4f;
 }
 
 body {
@@ -66,7 +66,7 @@ body {
   font-style: italic;
   font-size: 22px;
   line-height: 1.5;
-  color: #E9E4D8;
+  color: #e9e4d8;
 }
 
 /* Form panel (right) */
@@ -84,12 +84,20 @@ body {
 }
 
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-form-wrap { animation: none; }
+  .auth-form-wrap {
+    animation: none;
+  }
 }
 
 .auth-form-wrap h1 {
@@ -301,5 +309,7 @@ body {
 }
 
 @keyframes blink {
-  50% { opacity: 0; }
+  50% {
+    opacity: 0;
+  }
 }

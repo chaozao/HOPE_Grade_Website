@@ -6,16 +6,16 @@
 }
 
 :root {
-  --color-panel: #12292B;
+  --color-panel: #12292b;
   --color-panel-hover: rgba(255, 255, 255, 0.06);
-  --color-panel-text: #ECEAE2;
-  --color-panel-text-muted: #9FB0AD;
-  --color-page: #FBF8F3;
-  --color-text: #1A231F;
-  --color-muted: #6E7B76;
-  --color-border: #E4DED2;
-  --color-accent: #D98A33;
-  --color-accent-hover: #C57A26;
+  --color-panel-text: #eceae2;
+  --color-panel-text-muted: #9fb0ad;
+  --color-page: #fbf8f3;
+  --color-text: #1a231f;
+  --color-muted: #6e7b76;
+  --color-border: #e4ded2;
+  --color-accent: #d98a33;
+  --color-accent-hover: #c57a26;
 }
 
 body {
@@ -74,7 +74,9 @@ body {
   color: var(--color-panel-text-muted);
   text-decoration: none;
   font-size: 14px;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .nav-item i {
@@ -214,7 +216,7 @@ body {
 .header-filters select:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-  background: #F1EFE9;
+  background: #f1efe9;
 }
 
 /* Stat cards */
@@ -302,7 +304,7 @@ body {
   font-weight: 500;
   color: var(--color-muted);
   padding: 12px 20px;
-  background: #FAF7F1;
+  background: #faf7f1;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -324,10 +326,22 @@ body {
   font-weight: 600;
 }
 
-.grade-a { background: #E9F3EA; color: #2E6B3E; }
-.grade-b { background: #FCF3D9; color: #8A6D1B; }
-.grade-c { background: #FBE9D6; color: #A65F1B; }
-.grade-f { background: #FBEAE7; color: #A6402F; }
+.grade-a {
+  background: #e9f3ea;
+  color: #2e6b3e;
+}
+.grade-b {
+  background: #fcf3d9;
+  color: #8a6d1b;
+}
+.grade-c {
+  background: #fbe9d6;
+  color: #a65f1b;
+}
+.grade-f {
+  background: #fbeae7;
+  color: #a6402f;
+}
 
 /* Sidebar toggle button + dimmed backdrop - hidden entirely on desktop,
    where the sidebar is always visible and nothing needs toggling. */
@@ -476,14 +490,13 @@ body {
 }
 
 .btn-primary:disabled {
-  background: #D9D4C8;
+  background: #d9d4c8;
   cursor: not-allowed;
 }
 
 .btn-primary:disabled:hover {
-  background: #D9D4C8;
+  background: #d9d4c8;
 }
-
 
 .empty-state {
   background: #fff;
@@ -493,7 +506,6 @@ body {
   text-align: center;
   color: var(--color-muted);
 }
-
 
 /* Logout confirmation popup - built by confirmLogout() in auth.js */
 .confirm-overlay {
@@ -566,61 +578,222 @@ body {
 }
 
 /* Advisor additions to the subject-teacher dashboard styles. */
-[hidden], .hidden {
+[hidden],
+.hidden {
   display: none !important;
 }
 
-.main-content { min-width: 0; }
-.stat-value { overflow-wrap: anywhere; }
-.advisor-notice { margin-bottom: 20px; color: var(--color-muted); line-height: 1.5; }
-.advisor-notice.is-error { color: #A6402F; }
-.retry-btn { margin-bottom: 20px; }
-.advisor-panel .grades-table-section { margin-bottom: 24px; overflow-x: auto; }
-.class-tools { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-.class-tools a { text-decoration: none; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-
-
-/* Clear hierarchy for the advisory overview and workspace. */
-.advisor-panel { max-width: 1440px; margin-inline: auto; }
-.content-subtitle { max-width: 720px; line-height: 1.6; }
-.section-eyebrow { display: block; margin-bottom: 8px; color: #65756e; font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
-#view-dashboard .stat-cards { grid-template-columns: 1.3fr 1fr 1fr; gap: 16px; }
-#view-dashboard .stat-card { padding: 24px; border-radius: 12px; gap: 10px; }
-#view-dashboard .stat-card:first-child { background: #eaf0ec; border-color: #d3dfd6; }
-#view-dashboard .stat-value { font-size: 30px; line-height: 1.2; }
-#view-dashboard .stat-label { font-weight: 500; }
-#view-dashboard .stat-note { line-height: 1.5; }
-.section-description { margin-top: 6px; color: var(--color-muted); font-size: 13px; line-height: 1.5; }
-.dashboard-assignments { border-radius: 12px; }
-.dashboard-assignments .table-header { padding: 24px; }
-.dashboard-assignments .grades-table th, .dashboard-assignments .grades-table td { padding: 16px 24px; }
-.dashboard-assignments .grades-table td:first-child { font-weight: 500; }
-.table-footnote { padding: 16px 24px; border-top: 1px solid var(--color-border); font-size: 12px; color: var(--color-muted); line-height: 1.5; }
-#view-homeroom .homeroom-tabs { gap: 8px; padding-bottom: 0; margin-bottom: 24px; }
-#view-homeroom .homeroom-tabs button { padding: 14px 16px; border-radius: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-#view-homeroom .homeroom-tabs button.active { background: transparent; color: #294b3f; border-bottom-color: #294b3f; font-weight: 600; }
-#view-homeroom .homeroom-tabs button:hover { background: #eef1eb; }
-#view-homeroom .grades-table-section { border-radius: 12px; }
-#view-homeroom .table-header { gap: 16px; }
-a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #a96620; outline-offset: 3px; }
-@media (max-width: 650px) {
-  #view-dashboard .stat-cards { grid-template-columns: 1fr 1fr; }
-  #view-dashboard .stat-card:first-child { grid-column: 1 / -1; }
-  #view-dashboard .stat-card { padding: 18px; }
-  #view-homeroom .homeroom-tabs { gap: 0; }
-  #view-homeroom .homeroom-tabs button { padding: 12px 10px; font-size: 12px; }
+.main-content {
+  min-width: 0;
+}
+.stat-value {
+  overflow-wrap: anywhere;
+}
+.advisor-notice {
+  margin-bottom: 20px;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+.advisor-notice.is-error {
+  color: #a6402f;
+}
+.retry-btn {
+  margin-bottom: 20px;
+}
+.advisor-panel .grades-table-section {
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+.class-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.class-tools a {
+  text-decoration: none;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-.roster-table-header { flex-wrap: wrap; align-items: center; }
-.roster-table-header .stat-note { display: block; margin-top: 8px; }
-.roster-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
-.roster-filters select:disabled { background: #f1efe9; color: #7a817c; cursor: not-allowed; }
-.roster-filters label { display: flex; flex-direction: column; gap: 6px; color: var(--color-muted); font-size: 12px; }
-.roster-filters select { min-width: 140px; max-width: 250px; padding: 9px 12px; border: 1px solid var(--color-border); border-radius: 6px; background: #fff; color: var(--color-text); font: inherit; font-size: 14px; }
-#homeroom-filter-status, #retry-homeroom-filter { margin: 16px 20px; }
+/* Clear hierarchy for the advisory overview and workspace. */
+.advisor-panel {
+  max-width: 1440px;
+  margin-inline: auto;
+}
+.content-subtitle {
+  max-width: 720px;
+  line-height: 1.6;
+}
+.section-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: #65756e;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+#view-dashboard .stat-cards {
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 16px;
+}
+#view-dashboard .stat-card {
+  padding: 24px;
+  border-radius: 12px;
+  gap: 10px;
+}
+#view-dashboard .stat-card:first-child {
+  background: #eaf0ec;
+  border-color: #d3dfd6;
+}
+#view-dashboard .stat-value {
+  font-size: 30px;
+  line-height: 1.2;
+}
+#view-dashboard .stat-label {
+  font-weight: 500;
+}
+#view-dashboard .stat-note {
+  line-height: 1.5;
+}
+.section-description {
+  margin-top: 6px;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.dashboard-assignments {
+  border-radius: 12px;
+}
+.dashboard-assignments .table-header {
+  padding: 24px;
+}
+.dashboard-assignments .grades-table th,
+.dashboard-assignments .grades-table td {
+  padding: 16px 24px;
+}
+.dashboard-assignments .grades-table td:first-child {
+  font-weight: 500;
+}
+.table-footnote {
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+#view-homeroom .homeroom-tabs {
+  gap: 8px;
+  padding-bottom: 0;
+  margin-bottom: 24px;
+}
+#view-homeroom .homeroom-tabs button {
+  padding: 14px 16px;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+#view-homeroom .homeroom-tabs button.active {
+  background: transparent;
+  color: #294b3f;
+  border-bottom-color: #294b3f;
+  font-weight: 600;
+}
+#view-homeroom .homeroom-tabs button:hover {
+  background: #eef1eb;
+}
+#view-homeroom .grades-table-section {
+  border-radius: 12px;
+}
+#view-homeroom .table-header {
+  gap: 16px;
+}
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid #a96620;
+  outline-offset: 3px;
+}
 @media (max-width: 650px) {
-  .roster-filters { width: 100%; }
-  .roster-filters label { flex: 1 1 140px; }
-  .roster-filters select { width: 100%; max-width: none; font-size: 16px; }
+  #view-dashboard .stat-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+  #view-dashboard .stat-card:first-child {
+    grid-column: 1 / -1;
+  }
+  #view-dashboard .stat-card {
+    padding: 18px;
+  }
+  #view-homeroom .homeroom-tabs {
+    gap: 0;
+  }
+  #view-homeroom .homeroom-tabs button {
+    padding: 12px 10px;
+    font-size: 12px;
+  }
+}
+
+.roster-table-header {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.roster-table-header .stat-note {
+  display: block;
+  margin-top: 8px;
+}
+.roster-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.roster-filters select:disabled {
+  background: #f1efe9;
+  color: #7a817c;
+  cursor: not-allowed;
+}
+.roster-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.roster-filters select {
+  min-width: 140px;
+  max-width: 250px;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+}
+#homeroom-filter-status,
+#retry-homeroom-filter {
+  margin: 16px 20px;
+}
+@media (max-width: 650px) {
+  .roster-filters {
+    width: 100%;
+  }
+  .roster-filters label {
+    flex: 1 1 140px;
+  }
+  .roster-filters select {
+    width: 100%;
+    max-width: none;
+    font-size: 16px;
+  }
 }

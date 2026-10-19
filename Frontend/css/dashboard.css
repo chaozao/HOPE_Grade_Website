@@ -6,16 +6,16 @@
 }
 
 :root {
-  --color-panel: #12292B;
+  --color-panel: #12292b;
   --color-panel-hover: rgba(255, 255, 255, 0.06);
-  --color-panel-text: #ECEAE2;
-  --color-panel-text-muted: #9FB0AD;
-  --color-page: #FBF8F3;
-  --color-text: #1A231F;
-  --color-muted: #6E7B76;
-  --color-border: #E4DED2;
-  --color-accent: #D98A33;
-  --color-accent-hover: #C57A26;
+  --color-panel-text: #eceae2;
+  --color-panel-text-muted: #9fb0ad;
+  --color-page: #fbf8f3;
+  --color-text: #1a231f;
+  --color-muted: #6e7b76;
+  --color-border: #e4ded2;
+  --color-accent: #d98a33;
+  --color-accent-hover: #c57a26;
 }
 
 body {
@@ -74,7 +74,9 @@ body {
   color: var(--color-panel-text-muted);
   text-decoration: none;
   font-size: 14px;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .nav-item i {
@@ -214,7 +216,7 @@ body {
 .header-filters select:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-  background: #F1EFE9;
+  background: #f1efe9;
 }
 
 /* Stat cards */
@@ -302,7 +304,7 @@ body {
   font-weight: 500;
   color: var(--color-muted);
   padding: 12px 20px;
-  background: #FAF7F1;
+  background: #faf7f1;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -324,10 +326,22 @@ body {
   font-weight: 600;
 }
 
-.grade-a { background: #E9F3EA; color: #2E6B3E; }
-.grade-b { background: #FCF3D9; color: #8A6D1B; }
-.grade-c { background: #FBE9D6; color: #A65F1B; }
-.grade-f { background: #FBEAE7; color: #A6402F; }
+.grade-a {
+  background: #e9f3ea;
+  color: #2e6b3e;
+}
+.grade-b {
+  background: #fcf3d9;
+  color: #8a6d1b;
+}
+.grade-c {
+  background: #fbe9d6;
+  color: #a65f1b;
+}
+.grade-f {
+  background: #fbeae7;
+  color: #a6402f;
+}
 
 /* Sidebar toggle button + dimmed backdrop - hidden entirely on desktop,
    where the sidebar is always visible and nothing needs toggling. */
@@ -476,14 +490,13 @@ body {
 }
 
 .btn-primary:disabled {
-  background: #D9D4C8;
+  background: #d9d4c8;
   cursor: not-allowed;
 }
 
 .btn-primary:disabled:hover {
-  background: #D9D4C8;
+  background: #d9d4c8;
 }
-
 
 .empty-state {
   background: #fff;
@@ -493,7 +506,6 @@ body {
   text-align: center;
   color: var(--color-muted);
 }
-
 
 /* Logout confirmation popup - built by confirmLogout() in auth.js */
 .confirm-overlay {

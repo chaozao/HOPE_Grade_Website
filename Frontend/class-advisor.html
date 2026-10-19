@@ -1,178 +1,522 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Dashboard — Hope Workspace</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="css/class-advisor.css">
-  <link rel="stylesheet" href="css/academic.css">
-  <link rel="stylesheet" href="css/section-subjects.css">
-</head>
-<body>
-  <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
-    <i class="bi bi-chevron-right"></i>
-  </button>
-  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
-  <div class="dashboard">
-    <aside class="sidebar">
-      <div class="sidebar-brand">
-        <img src="hope.png" alt="Hope" class="sidebar-logo">
-        <span class="sidebar-brand-name">Hope</span>
-      </div>
-      <nav class="sidebar-nav" aria-label="Main navigation">
-        <a href="#dashboard" class="nav-item active" data-view="dashboard" aria-current="page">
-          <i class="bi bi-speedometer2"></i><span>Dashboard</span>
-        </a>
-        <a href="#homeroom" class="nav-item" data-view="homeroom">
-          <i class="bi bi-house-door"></i><span>Homeroom</span>
-        </a>
-        <a href="#class" class="nav-item" data-view="class" id="class-nav" hidden>
-          <i class="bi bi-journal-bookmark"></i><span>Class</span>
-        </a>
-        <a href="#requests" class="nav-item" data-view="requests"><i class="bi bi-arrow-repeat"></i><span>Grade Edit Request</span></a>
-        <a href="#reports" class="nav-item" data-view="reports"><i class="bi bi-file-earmark-text"></i><span>Final Grade Reports</span></a>
-      </nav>
-      <div class="sidebar-user">
-        <a href="profile.html" class="sidebar-profile-link" aria-label="Open my profile">
-          <div class="user-avatar"><i class="bi bi-person-fill"></i></div>
-          <div class="user-info">
-            <span class="user-name" id="user-name">Teacher</span>
-            <span class="user-role">Class Advisor</span>
-          </div>
-        </a>
-        <button class="logout-btn" id="logout-btn" aria-label="Log out"><i class="bi bi-box-arrow-right"></i></button>
-      </div>
-    </aside>
-    <main class="main-content">
-      <div class="advisor-notice" id="page-status" role="status">Loading your assignments…</div>
-      <button type="button" class="filter-btn retry-btn" id="retry-btn" hidden>Retry loading assignments</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Dashboard — Hope Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+    />
+    <link rel="stylesheet" href="css/class-advisor.css" />
+    <link rel="stylesheet" href="css/academic.css" />
+    <link rel="stylesheet" href="css/section-subjects.css" />
+  </head>
+  <body>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
+      <i class="bi bi-chevron-right"></i>
+    </button>
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <div class="dashboard">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <img src="hope.png" alt="Hope" class="sidebar-logo" />
+          <span class="sidebar-brand-name">Hope</span>
+        </div>
+        <nav class="sidebar-nav" aria-label="Main navigation">
+          <a href="#dashboard" class="nav-item active" data-view="dashboard" aria-current="page">
+            <i class="bi bi-speedometer2"></i>
+            <span>Dashboard</span>
+          </a>
+          <a href="#homeroom" class="nav-item" data-view="homeroom">
+            <i class="bi bi-house-door"></i>
+            <span>Homeroom</span>
+          </a>
+          <a href="#class" class="nav-item" data-view="class" id="class-nav" hidden>
+            <i class="bi bi-journal-bookmark"></i>
+            <span>Class</span>
+          </a>
+          <a href="#requests" class="nav-item" data-view="requests">
+            <i class="bi bi-arrow-repeat"></i>
+            <span>Grade Edit Request</span>
+          </a>
+          <a href="#reports" class="nav-item" data-view="reports">
+            <i class="bi bi-file-earmark-text"></i>
+            <span>Final Grade Reports</span>
+          </a>
+        </nav>
+        <div class="sidebar-user">
+          <a href="profile.html" class="sidebar-profile-link" aria-label="Open my profile">
+            <div class="user-avatar"><i class="bi bi-person-fill"></i></div>
+            <div class="user-info">
+              <span class="user-name" id="user-name">Teacher</span>
+              <span class="user-role">Class Advisor</span>
+            </div>
+          </a>
+          <button class="logout-btn" id="logout-btn" aria-label="Log out">
+            <i class="bi bi-box-arrow-right"></i>
+          </button>
+        </div>
+      </aside>
+      <main class="main-content">
+        <div class="advisor-notice" id="page-status" role="status">Loading your assignments…</div>
+        <button type="button" class="filter-btn retry-btn" id="retry-btn" hidden>
+          Retry loading assignments
+        </button>
 
         <p id="adviser-tool-status" class="workflow-status" role="status" hidden></p>
         <button type="button" id="retry-adviser-tool" class="filter-btn" hidden>Retry</button>
 
-      <section class="advisor-panel" id="view-dashboard" aria-labelledby="dashboard-title">
-        <header class="content-header">
-          <div><span class="section-eyebrow">Your workspace</span><h1 id="dashboard-title">Dashboard</h1><p class="content-subtitle" id="welcome-message">Your homeroom and teaching assignments at a glance.</p></div>
-        </header>
-        <div class="stat-cards">
-          <div class="stat-card"><span class="stat-label">Homeroom</span><span class="stat-value" id="stat-homeroom">—</span><span class="stat-note">Your advisory class</span></div>
-          <div class="stat-card"><span class="stat-label">Homeroom students</span><span class="stat-value" id="stat-students">—</span><span class="stat-note">Students in your care</span></div>
-          <div class="stat-card"><span class="stat-label">Teaching assignments</span><span class="stat-value" id="stat-subjects">—</span><span class="stat-note" id="teaching-note">Subjects you teach</span></div>
-        </div>
-        <section class="grades-table-section dashboard-assignments" aria-labelledby="assignments-title">
-          <div class="table-header"><div><span class="section-eyebrow">Teaching overview</span><h2 id="assignments-title">Assigned subjects</h2><p class="section-description">Your subjects, class sizes, and current grade status.</p></div></div>
-          <table class="grades-table"><thead><tr><th scope="col">Subject</th><th scope="col">Class / section</th><th scope="col">Students</th><th scope="col">Grade status</th></tr></thead><tbody id="assigned-subjects-tbody"><tr><td colspan="4">Loading assigned subjects...</td></tr></tbody></table>
-          <p class="table-footnote" id="assignments-note">Use Class in the sidebar to encode grades and review performance.</p>
-        </section>
-      </section>
-
-      <section class="advisor-panel" id="view-homeroom" aria-labelledby="homeroom-title" hidden>
-        <h1 id="homeroom-title" class="sr-only">Homeroom</h1>
-        <nav class="workflow-tabs homeroom-tabs" aria-label="Adviser tools">
-          <button type="button" data-adviser-tab="homeroom" class="active" aria-pressed="true">Advisory roster</button>
-          <button type="button" data-adviser-tab="teachers" aria-pressed="false">Subjects &amp; teachers</button>
-          <button type="button" data-adviser-tab="registry" aria-pressed="false">Student records</button>
-        </nav>
-        <div data-adviser-panel="homeroom">
-        <div class="empty-state" id="homeroom-empty" hidden>You are not currently assigned a homeroom. Contact your super admin if this looks wrong.</div>
-        <div id="homeroom-content" hidden>
-          <section class="grades-table-section">
-            <div class="table-header roster-table-header"><div><h2>Homeroom students</h2><span class="stat-note" id="homeroom-count" role="status"></span></div>
-              <div class="roster-filters">
-                <label>Grade level<select id="roster-grade" disabled><option value="">Select grade level</option></select></label>
-                <label>Section<select id="roster-section" disabled><option value="">Select section</option></select></label>
-                <label>Subject<select id="roster-subject" disabled><option value="">Select subject</option></select></label>
+        <section class="advisor-panel" id="view-dashboard" aria-labelledby="dashboard-title">
+          <header class="content-header">
+            <div>
+              <span class="section-eyebrow">Your workspace</span>
+              <h1 id="dashboard-title">Dashboard</h1>
+              <p class="content-subtitle" id="welcome-message">
+                Your homeroom and teaching assignments at a glance.
+              </p>
+            </div>
+          </header>
+          <div class="stat-cards">
+            <div class="stat-card">
+              <span class="stat-label">Homeroom</span>
+              <span class="stat-value" id="stat-homeroom">—</span>
+              <span class="stat-note">Your advisory class</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Homeroom students</span>
+              <span class="stat-value" id="stat-students">—</span>
+              <span class="stat-note">Students in your care</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Teaching assignments</span>
+              <span class="stat-value" id="stat-subjects">—</span>
+              <span class="stat-note" id="teaching-note">Subjects you teach</span>
+            </div>
+          </div>
+          <section
+            class="grades-table-section dashboard-assignments"
+            aria-labelledby="assignments-title"
+          >
+            <div class="table-header">
+              <div>
+                <span class="section-eyebrow">Teaching overview</span>
+                <h2 id="assignments-title">Assigned subjects</h2>
+                <p class="section-description">
+                  Your subjects, class sizes, and current grade status.
+                </p>
               </div>
             </div>
-            <p id="homeroom-filter-status" class="advisor-notice" role="status" hidden></p>
-            <button type="button" id="retry-homeroom-filter" class="filter-btn" hidden>Retry loading roster</button>
-            <table class="grades-table"><thead><tr><th scope="col">LRN</th><th scope="col">Student name</th><th scope="col">Middle name</th><th scope="col">Gender</th><th scope="col">Grade level</th></tr></thead><tbody id="homeroom-tbody"></tbody></table>
+            <table class="grades-table">
+              <thead>
+                <tr>
+                  <th scope="col">Subject</th>
+                  <th scope="col">Class / section</th>
+                  <th scope="col">Students</th>
+                  <th scope="col">Grade status</th>
+                </tr>
+              </thead>
+              <tbody id="assigned-subjects-tbody">
+                <tr>
+                  <td colspan="4">Loading assigned subjects...</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="table-footnote" id="assignments-note">
+              Use Class in the sidebar to encode grades and review performance.
+            </p>
           </section>
-          <div class="workflow-toolbar"><button type="button" class="filter-btn" id="roster-prev" disabled>Previous</button><span id="roster-page" role="status"></span><button type="button" class="filter-btn" id="roster-next" disabled>Next</button></div>
-        </div>
-        </div>
-        <div data-adviser-panel="teachers" hidden>
-          <section class="grades-table-section">
-            <div class="table-header"><div><h2>Subjects and teachers</h2><p class="section-description">Teaching assignments for your advisory class.</p></div><button type="button" class="filter-btn" id="manage-section-subjects" disabled>Manage subjects</button></div>
-            <table class="grades-table"><thead><tr><th scope="col">Subject</th><th scope="col">Subject teacher</th><th scope="col">Email</th></tr></thead><tbody id="homeroom-subjects-tbody"></tbody></table>
-          </section>
-        </div>
-        <div data-adviser-panel="registry" hidden>
-          <div class="workflow-toolbar">
-            <div><h2>Student records</h2><p class="content-subtitle">School-wide student records. Register students, update details, and manage section and subject enrollment.</p></div>
-            <button type="button" class="btn-primary" id="register-student">Register student</button>
+        </section>
+
+        <section class="advisor-panel" id="view-homeroom" aria-labelledby="homeroom-title" hidden>
+          <h1 id="homeroom-title" class="sr-only">Homeroom</h1>
+          <nav class="workflow-tabs homeroom-tabs" aria-label="Adviser tools">
+            <button type="button" data-adviser-tab="homeroom" class="active" aria-pressed="true">
+              Advisory roster
+            </button>
+            <button type="button" data-adviser-tab="teachers" aria-pressed="false">
+              Subjects &amp; teachers
+            </button>
+            <button type="button" data-adviser-tab="registry" aria-pressed="false">
+              Student records
+            </button>
+          </nav>
+          <div data-adviser-panel="homeroom">
+            <div class="empty-state" id="homeroom-empty" hidden>
+              You are not currently assigned a homeroom. Contact your super admin if this looks
+              wrong.
+            </div>
+            <div id="homeroom-content" hidden>
+              <section class="grades-table-section">
+                <div class="table-header roster-table-header">
+                  <div>
+                    <h2>Homeroom students</h2>
+                    <span class="stat-note" id="homeroom-count" role="status"></span>
+                  </div>
+                  <div class="roster-filters">
+                    <label>
+                      Grade level
+                      <select id="roster-grade" disabled>
+                        <option value="">Select grade level</option>
+                      </select>
+                    </label>
+                    <label>
+                      Section
+                      <select id="roster-section" disabled>
+                        <option value="">Select section</option>
+                      </select>
+                    </label>
+                    <label>
+                      Subject
+                      <select id="roster-subject" disabled>
+                        <option value="">Select subject</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+                <p id="homeroom-filter-status" class="advisor-notice" role="status" hidden></p>
+                <button type="button" id="retry-homeroom-filter" class="filter-btn" hidden>
+                  Retry loading roster
+                </button>
+                <table class="grades-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">LRN</th>
+                      <th scope="col">Student name</th>
+                      <th scope="col">Middle name</th>
+                      <th scope="col">Gender</th>
+                      <th scope="col">Grade level</th>
+                    </tr>
+                  </thead>
+                  <tbody id="homeroom-tbody"></tbody>
+                </table>
+              </section>
+              <div class="workflow-toolbar">
+                <button type="button" class="filter-btn" id="roster-prev" disabled>Previous</button>
+                <span id="roster-page" role="status"></span>
+                <button type="button" class="filter-btn" id="roster-next" disabled>Next</button>
+              </div>
+            </div>
           </div>
-          <form id="student-search-form" class="workflow-toolbar">
-            <label>Search name or LRN<input type="search" id="student-search" maxlength="100" placeholder="Type a name or LRN…"></label>
-            <label>Class / section<select id="student-class-filter"><option value="">All classes</option></select></label>
-          </form>
-          <div class="grades-table-section"><table class="grades-table"><thead><tr><th>LRN</th><th>Student</th><th>Gender</th><th>Grade level</th><th>Class / section</th><th>Actions</th></tr></thead><tbody id="registry-tbody"></tbody></table></div>
-          <div class="workflow-toolbar"><button type="button" class="filter-btn" id="students-prev">Previous</button><span id="student-page-info" role="status"></span><button type="button" class="filter-btn" id="students-next">Next</button></div>
-        </div>
-      </section>
+          <div data-adviser-panel="teachers" hidden>
+            <section class="grades-table-section">
+              <div class="table-header">
+                <div>
+                  <h2>Subjects and teachers</h2>
+                  <p class="section-description">Teaching assignments for your advisory class.</p>
+                </div>
+                <button type="button" class="filter-btn" id="manage-section-subjects" disabled>
+                  Manage subjects
+                </button>
+              </div>
+              <table class="grades-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Subject</th>
+                    <th scope="col">Subject teacher</th>
+                    <th scope="col">Email</th>
+                  </tr>
+                </thead>
+                <tbody id="homeroom-subjects-tbody"></tbody>
+              </table>
+            </section>
+          </div>
+          <div data-adviser-panel="registry" hidden>
+            <div class="workflow-toolbar">
+              <div>
+                <h2>Student records</h2>
+                <p class="content-subtitle">
+                  School-wide student records. Register students, update details, and manage section
+                  and subject enrollment.
+                </p>
+              </div>
+              <button type="button" class="btn-primary" id="register-student">
+                Register student
+              </button>
+            </div>
+            <form id="student-search-form" class="workflow-toolbar">
+              <label>
+                Search name or LRN
+                <input
+                  type="search"
+                  id="student-search"
+                  maxlength="100"
+                  placeholder="Type a name or LRN…"
+                />
+              </label>
+              <label>
+                Class / section
+                <select id="student-class-filter">
+                  <option value="">All classes</option>
+                </select>
+              </label>
+            </form>
+            <div class="grades-table-section">
+              <table class="grades-table">
+                <thead>
+                  <tr>
+                    <th>LRN</th>
+                    <th>Student</th>
+                    <th>Gender</th>
+                    <th>Grade level</th>
+                    <th>Class / section</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="registry-tbody"></tbody>
+              </table>
+            </div>
+            <div class="workflow-toolbar">
+              <button type="button" class="filter-btn" id="students-prev">Previous</button>
+              <span id="student-page-info" role="status"></span>
+              <button type="button" class="filter-btn" id="students-next">Next</button>
+            </div>
+          </div>
+        </section>
 
-      <section class="advisor-panel" id="view-requests" aria-labelledby="requests-title" hidden>
-        <header class="content-header"><div><h1 id="requests-title">Grade Edit Request</h1><p class="content-subtitle">Review requests for your advisory class and track grade modifications.</p></div></header>
-        <nav class="workflow-tabs" aria-label="Grade-edit request tools">
-          <button type="button" data-adviser-tab="requests" class="active" aria-pressed="true">Pending Approvals</button>
-          <button type="button" data-adviser-tab="my-requests" id="my-requests-tab" aria-pressed="false" hidden>My Requests</button>
-          <button type="button" data-adviser-tab="history" aria-pressed="false">Modification History</button>
-        </nav>
-        <div data-adviser-panel="requests">
-          <div class="workflow-toolbar"><div><h2>Pending Approvals</h2><p class="content-subtitle">Only you, as the subject’s class adviser, can approve reopening. Approved subjects must be finalized again after correction.</p></div><button type="button" class="filter-btn" id="refresh-requests">Refresh</button></div>
-          <div class="grades-table-section"><table class="grades-table"><thead><tr><th>Subject / class</th><th>Requested by</th><th>Reason / date</th><th>Status</th><th>Review</th></tr></thead><tbody id="edit-requests-tbody"></tbody></table></div>
-        </div>
-        <div data-adviser-panel="my-requests" hidden><div class="workflow-toolbar"><h2>My Requests</h2><button type="button" class="filter-btn" id="refresh-my-requests">Refresh</button></div><p class="content-subtitle">Reopening requests for subjects you teach. Submit a request from the locked subject's gradebook.</p><div class="grades-table-section"><table class="grades-table"><thead><tr><th>Subject / class</th><th>Reason</th><th>Status</th><th>Adviser review</th><th>Gradebook</th></tr></thead><tbody id="my-requests-tbody"></tbody></table></div></div>
-        <div data-adviser-panel="history" hidden><div class="workflow-toolbar"><h2>Modification History</h2><button type="button" class="filter-btn" id="refresh-history">Refresh</button></div><p class="content-subtitle">Recent grade saves, finalizations, and reopening decisions for your advisory subjects and subjects you teach.</p><div class="grades-table-section"><table class="grades-table"><thead><tr><th>Date</th><th>Subject</th><th>Action</th><th>Performed by</th></tr></thead><tbody id="history-tbody"></tbody></table></div></div>
-      </section>
-      <section class="advisor-panel" id="view-reports" aria-labelledby="reports-title" hidden><header class="content-header"><div><h1 id="reports-title">Final Grade Reports</h1><p class="content-subtitle">Class adviser reports for your advisory students.</p></div></header>
-        <div data-adviser-panel="monitor">
-          <div class="workflow-toolbar"><div><h2>Grade completion</h2><p class="content-subtitle">Only your advisory classes appear here. Final reports require all enrolled subjects to be complete and finalized.</p></div><button type="button" class="filter-btn" id="refresh-monitor">Refresh</button></div>
-          <div class="grades-table-section"><table class="grades-table"><thead><tr><th>Subject</th><th>Class</th><th>Teacher</th><th>Completed scores</th><th>Status</th></tr></thead><tbody id="monitor-subjects"></tbody></table></div>
-          <h2>Student grades &amp; final reports</h2>
-          <div class="grades-table-section"><table class="grades-table"><thead><tr><th>LRN</th><th>Student / class</th><th>Subject grades</th><th>Final report</th></tr></thead><tbody id="monitor-students"></tbody></table></div>
-        </div>
-      </section>
+        <section class="advisor-panel" id="view-requests" aria-labelledby="requests-title" hidden>
+          <header class="content-header">
+            <div>
+              <h1 id="requests-title">Grade Edit Request</h1>
+              <p class="content-subtitle">
+                Review requests for your advisory class and track grade modifications.
+              </p>
+            </div>
+          </header>
+          <nav class="workflow-tabs" aria-label="Grade-edit request tools">
+            <button type="button" data-adviser-tab="requests" class="active" aria-pressed="true">
+              Pending Approvals
+            </button>
+            <button
+              type="button"
+              data-adviser-tab="my-requests"
+              id="my-requests-tab"
+              aria-pressed="false"
+              hidden
+            >
+              My Requests
+            </button>
+            <button type="button" data-adviser-tab="history" aria-pressed="false">
+              Modification History
+            </button>
+          </nav>
+          <div data-adviser-panel="requests">
+            <div class="workflow-toolbar">
+              <div>
+                <h2>Pending Approvals</h2>
+                <p class="content-subtitle">
+                  Only you, as the subject’s class adviser, can approve reopening. Approved subjects
+                  must be finalized again after correction.
+                </p>
+              </div>
+              <button type="button" class="filter-btn" id="refresh-requests">Refresh</button>
+            </div>
+            <div class="grades-table-section">
+              <table class="grades-table">
+                <thead>
+                  <tr>
+                    <th>Subject / class</th>
+                    <th>Requested by</th>
+                    <th>Reason / date</th>
+                    <th>Status</th>
+                    <th>Review</th>
+                  </tr>
+                </thead>
+                <tbody id="edit-requests-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div data-adviser-panel="my-requests" hidden>
+            <div class="workflow-toolbar">
+              <h2>My Requests</h2>
+              <button type="button" class="filter-btn" id="refresh-my-requests">Refresh</button>
+            </div>
+            <p class="content-subtitle">
+              Reopening requests for subjects you teach. Submit a request from the locked subject's
+              gradebook.
+            </p>
+            <div class="grades-table-section">
+              <table class="grades-table">
+                <thead>
+                  <tr>
+                    <th>Subject / class</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Adviser review</th>
+                    <th>Gradebook</th>
+                  </tr>
+                </thead>
+                <tbody id="my-requests-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div data-adviser-panel="history" hidden>
+            <div class="workflow-toolbar">
+              <h2>Modification History</h2>
+              <button type="button" class="filter-btn" id="refresh-history">Refresh</button>
+            </div>
+            <p class="content-subtitle">
+              Recent grade saves, finalizations, and reopening decisions for your advisory subjects
+              and subjects you teach.
+            </p>
+            <div class="grades-table-section">
+              <table class="grades-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Subject</th>
+                    <th>Action</th>
+                    <th>Performed by</th>
+                  </tr>
+                </thead>
+                <tbody id="history-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <section class="advisor-panel" id="view-reports" aria-labelledby="reports-title" hidden>
+          <header class="content-header">
+            <div>
+              <h1 id="reports-title">Final Grade Reports</h1>
+              <p class="content-subtitle">Class adviser reports for your advisory students.</p>
+            </div>
+          </header>
+          <div data-adviser-panel="monitor">
+            <div class="workflow-toolbar">
+              <div>
+                <h2>Grade completion</h2>
+                <p class="content-subtitle">
+                  Only your advisory classes appear here. Final reports require all enrolled
+                  subjects to be complete and finalized.
+                </p>
+              </div>
+              <button type="button" class="filter-btn" id="refresh-monitor">Refresh</button>
+            </div>
+            <div class="grades-table-section">
+              <table class="grades-table">
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Class</th>
+                    <th>Teacher</th>
+                    <th>Completed scores</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="monitor-subjects"></tbody>
+              </table>
+            </div>
+            <h2>Student grades &amp; final reports</h2>
+            <div class="grades-table-section">
+              <table class="grades-table">
+                <thead>
+                  <tr>
+                    <th>LRN</th>
+                    <th>Student / class</th>
+                    <th>Subject grades</th>
+                    <th>Final report</th>
+                  </tr>
+                </thead>
+                <tbody id="monitor-students"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
 
-      <section class="advisor-panel" id="view-class" aria-labelledby="class-title" hidden>
-        <header class="content-header"><div><h1 id="class-title">Class</h1><p class="content-subtitle">Select a subject to view your learners? term and final grades.</p></div></header>
-        <div id="class-browser"></div>
-      </section>
-    </main>
-  </div>
-  <dialog id="student-dialog" class="workflow-dialog" aria-labelledby="student-dialog-title">
-    <h2 id="student-dialog-title">Register student</h2>
-    <form id="student-form">
-      <p id="student-form-status" class="workflow-status" role="status" hidden></p>
-      <fieldset id="student-form-fields" class="workflow-form-grid">
-        <label>LRN<input id="student-lrn" required inputmode="numeric" pattern="[0-9]+" maxlength="30"></label>
-        <label>First name<input id="student-first-name" required maxlength="100"></label>
-        <label>Last name<input id="student-last-name" required maxlength="100"></label>
-        <label>Middle name (optional)<input id="student-middle-name" maxlength="100"></label>
-        <label>Gender<select id="student-gender" required><option value="">Select gender</option><option>Male</option><option>Female</option></select></label>
-        <label>Class / section<select id="student-class" required></select></label>
-        <label>Grade level<input id="student-grade-level" required maxlength="40" placeholder="e.g. Grade 10"></label>
-        <div class="full-width"><h3>Enrolled subjects</h3><p class="content-subtitle">Select subjects in this section. Finalized subject enrollments cannot be changed until reopened.</p><div id="student-subjects" class="workflow-choice-list"></div></div>
-      </fieldset>
-      <div class="workflow-toolbar"><button type="button" class="filter-btn" id="cancel-student">Cancel</button><button type="submit" class="btn-primary" id="save-student">Save student</button></div>
-    </form>
-  </dialog>
-  <dialog id="review-dialog" class="workflow-dialog" aria-labelledby="review-title">
-    <h2 id="review-title">Review grade-edit request</h2><p id="review-description"></p>
-    <form id="review-form"><p id="review-status" role="status" hidden></p><label>Review note (optional)<textarea id="review-note" maxlength="1000" rows="3"></textarea></label><div class="workflow-toolbar"><button type="button" class="filter-btn" id="cancel-review">Cancel</button><button type="submit" class="btn-primary" id="confirm-review">Confirm</button></div></form>
-  </dialog>
-  <script src="js/config.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/sidebar-toggle.js"></script>
-  <script src="js/academic-ui.js"></script>
-  <script src="js/class-browser.js"></script>
-  <script src="js/section-subjects.js"></script>
-  <script src="js/homeroom-roster.js"></script>
-  <script src="js/class-advisor.js"></script>
-  <script src="js/adviser-workflow.js"></script>
-</body>
+        <section class="advisor-panel" id="view-class" aria-labelledby="class-title" hidden>
+          <header class="content-header">
+            <div>
+              <h1 id="class-title">Class</h1>
+              <p class="content-subtitle">
+                Select a subject to view your learners? term and final grades.
+              </p>
+            </div>
+          </header>
+          <div id="class-browser"></div>
+        </section>
+      </main>
+    </div>
+    <dialog id="student-dialog" class="workflow-dialog" aria-labelledby="student-dialog-title">
+      <h2 id="student-dialog-title">Register student</h2>
+      <form id="student-form">
+        <p id="student-form-status" class="workflow-status" role="status" hidden></p>
+        <fieldset id="student-form-fields" class="workflow-form-grid">
+          <label>
+            LRN
+            <input id="student-lrn" required inputmode="numeric" pattern="[0-9]+" maxlength="30" />
+          </label>
+          <label>
+            First name
+            <input id="student-first-name" required maxlength="100" />
+          </label>
+          <label>
+            Last name
+            <input id="student-last-name" required maxlength="100" />
+          </label>
+          <label>
+            Middle name (optional)
+            <input id="student-middle-name" maxlength="100" />
+          </label>
+          <label>
+            Gender
+            <select id="student-gender" required>
+              <option value="">Select gender</option>
+              <option>Male</option>
+              <option>Female</option>
+            </select>
+          </label>
+          <label>
+            Class / section
+            <select id="student-class" required></select>
+          </label>
+          <label>
+            Grade level
+            <input id="student-grade-level" required maxlength="40" placeholder="e.g. Grade 10" />
+          </label>
+          <div class="full-width">
+            <h3>Enrolled subjects</h3>
+            <p class="content-subtitle">
+              Select subjects in this section. Finalized subject enrollments cannot be changed until
+              reopened.
+            </p>
+            <div id="student-subjects" class="workflow-choice-list"></div>
+          </div>
+        </fieldset>
+        <div class="workflow-toolbar">
+          <button type="button" class="filter-btn" id="cancel-student">Cancel</button>
+          <button type="submit" class="btn-primary" id="save-student">Save student</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="review-dialog" class="workflow-dialog" aria-labelledby="review-title">
+      <h2 id="review-title">Review grade-edit request</h2>
+      <p id="review-description"></p>
+      <form id="review-form">
+        <p id="review-status" role="status" hidden></p>
+        <label>
+          Review note (optional)
+          <textarea id="review-note" maxlength="1000" rows="3"></textarea>
+        </label>
+        <div class="workflow-toolbar">
+          <button type="button" class="filter-btn" id="cancel-review">Cancel</button>
+          <button type="submit" class="btn-primary" id="confirm-review">Confirm</button>
+        </div>
+      </form>
+    </dialog>
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar-toggle.js"></script>
+    <script src="js/academic-ui.js"></script>
+    <script src="js/class-browser.js"></script>
+    <script src="js/section-subjects.js"></script>
+    <script src="js/homeroom-roster.js"></script>
+    <script src="js/class-advisor.js"></script>
+    <script src="js/adviser-workflow.js"></script>
+  </body>
 </html>

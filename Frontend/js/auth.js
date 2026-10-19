@@ -15,7 +15,7 @@ function saveToken(token, remember) {
   sessionStorage.removeItem('token');
 
   if (remember) {
-    localStorage.setItem('token', token);   // survives closing the browser
+    localStorage.setItem('token', token); // survives closing the browser
   } else {
     sessionStorage.setItem('token', token); // cleared when the tab/browser closes
   }
@@ -59,7 +59,7 @@ function getPayload(token) {
 // server so changes made by the super admin are reflected on the next visit.
 async function fetchTeacherData(token, path, allowNotFound = false) {
   const response = await fetch(API_BASE_URL + path, {
-    headers: { 'Authorization': 'Bearer ' + token }
+    headers: { Authorization: 'Bearer ' + token }
   });
   if (response.status === 401) {
     clearToken();
@@ -76,14 +76,20 @@ function workspaceHint(token) {
   try {
     const cached = JSON.parse(sessionStorage.getItem('workspace-hint'));
     if (cached?.token === token) return cached;
-  } catch (_) { /* Use the signed login snapshot when no cached assignment exists. */ }
+  } catch (_) {
+    /* Use the signed login snapshot when no cached assignment exists. */
+  }
   const payload = getPayload(token);
-  return typeof payload?.isAdviser === 'boolean' ? { adviser: payload.isAdviser, teaching: false } : null;
+  return typeof payload?.isAdviser === 'boolean'
+    ? { adviser: payload.isAdviser, teaching: false }
+    : null;
 }
 function rememberWorkspace(token, adviser, teaching = workspaceHint(token)?.teaching || false) {
   sessionStorage.setItem('workspace-hint', JSON.stringify({ token, adviser, teaching }));
 }
-function revealWorkspace() { document.documentElement.classList.remove('workspace-pending'); }
+function revealWorkspace() {
+  document.documentElement.classList.remove('workspace-pending');
+}
 async function getAdvisorClass(token) {
   const advisory = await fetchTeacherData(token, '/adviser/my-class', true);
   rememberWorkspace(token, Boolean(advisory));
@@ -100,7 +106,8 @@ async function configureAdvisorNavigation(token, subjects) {
       if (!subjects) subjects = await fetchTeacherData(token, '/teacher/my-subjects');
       rememberWorkspace(token, false, subjects.length > 0);
       renderTeacherNavigation(subjects.length > 0);
-      revealWorkspace(); return;
+      revealWorkspace();
+      return;
     }
     // Establish the adviser menu even if teaching assignments cannot load.
     renderAdvisorNavigation(hint?.teaching || false);
@@ -121,12 +128,18 @@ function renderAdvisorNavigation(teaching) {
     ['homeroom', 'bi-house-door', 'Homeroom']
   ];
   if (teaching) items.push(['class', 'bi-journal-bookmark', 'Class']);
-  items.push(['requests', 'bi-arrow-repeat', 'Grade Edit Request'], ['reports', 'bi-file-earmark-text', 'Final Grade Reports']);
+  items.push(
+    ['requests', 'bi-arrow-repeat', 'Grade Edit Request'],
+    ['reports', 'bi-file-earmark-text', 'Final Grade Reports']
+  );
   items.forEach(function (item) {
     const link = document.createElement('a');
     link.href = 'class-advisor.html#' + item[0];
     link.className = 'nav-item';
-    if (item[0] === 'class' && /\/(grade-entry|student-insights)\.html$/.test(window.location.pathname)) {
+    if (
+      item[0] === 'class' &&
+      /\/(grade-entry|student-insights)\.html$/.test(window.location.pathname)
+    ) {
       link.classList.add('active');
     }
     const icon = document.createElement('i');
@@ -152,11 +165,11 @@ function confirmLogout() {
     overlay.className = 'confirm-overlay';
     overlay.innerHTML =
       '<div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="logout-confirm-text">' +
-        '<p id="logout-confirm-text">Are you sure you want to log out?</p>' +
-        '<div class="confirm-actions">' +
-          '<button type="button" class="confirm-btn confirm-btn-no" id="logout-confirm-no">No</button>' +
-          '<button type="button" class="confirm-btn confirm-btn-yes" id="logout-confirm-yes">Yes</button>' +
-        '</div>' +
+      '<p id="logout-confirm-text">Are you sure you want to log out?</p>' +
+      '<div class="confirm-actions">' +
+      '<button type="button" class="confirm-btn confirm-btn-no" id="logout-confirm-no">No</button>' +
+      '<button type="button" class="confirm-btn confirm-btn-yes" id="logout-confirm-yes">Yes</button>' +
+      '</div>' +
       '</div>';
     document.body.appendChild(overlay);
 
@@ -187,7 +200,11 @@ function renderTeacherNavigation(teaching) {
   const nav = document.querySelector('.sidebar-nav');
   nav.replaceChildren();
   const onDashboard = location.pathname.endsWith('/dashboard.html');
-  const view = onDashboard ? (location.hash.slice(1) || 'dashboard') : /\/(grade-entry|student-insights)\.html$/.test(location.pathname) ? 'class' : '';
+  const view = onDashboard
+    ? location.hash.slice(1) || 'dashboard'
+    : /\/(grade-entry|student-insights)\.html$/.test(location.pathname)
+      ? 'class'
+      : '';
   const items = [['dashboard', 'bi-speedometer2', 'Dashboard']];
   if (teaching) items.push(['class', 'bi-journal-bookmark', 'Class']);
   items.push(['requests', 'bi-arrow-repeat', 'Grade Edit Request']);
@@ -195,10 +212,16 @@ function renderTeacherNavigation(teaching) {
     const link = document.createElement('a');
     link.href = 'dashboard.html' + (id === 'dashboard' ? '' : '#' + id);
     link.className = 'nav-item';
-    if (id === view) { link.classList.add('active'); link.setAttribute('aria-current', 'page'); }
-    const glyph = document.createElement('i'); glyph.className = 'bi ' + icon;
-    const text = document.createElement('span'); text.textContent = label;
-    link.append(glyph, text); nav.appendChild(link);
+    if (id === view) {
+      link.classList.add('active');
+      link.setAttribute('aria-current', 'page');
+    }
+    const glyph = document.createElement('i');
+    glyph.className = 'bi ' + icon;
+    const text = document.createElement('span');
+    text.textContent = label;
+    link.append(glyph, text);
+    nav.appendChild(link);
   });
   document.querySelector('.user-role').textContent = 'Subject Teacher';
   revealWorkspace();

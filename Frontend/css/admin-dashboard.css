@@ -11,74 +11,329 @@
   display: none !important;
 }
 
-[hidden] { display: none !important; }
-.teacher-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-#modal-assign-roles { z-index: 300; padding: 16px; }
-.modal.roles-modal { max-width: 580px; max-height: calc(100dvh - 32px); overflow-y: auto; }
-.edit-teacher-roles { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid var(--color-border); border-radius: 10px; background: #fff; color: var(--color-accent); cursor: pointer; }
-.edit-teacher-roles:hover { background: #f8f2e8; border-color: var(--color-accent); }
-.edit-teacher-roles:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
-.roles-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--color-accent); margin-bottom: 8px; }
-.roles-teacher-card { display: flex; gap: 12px; align-items: center; padding: 16px; border-radius: 12px; background: #f7f5f0; margin-bottom: 20px; overflow-wrap: anywhere; }
-.roles-avatar { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; background: #eee5d5; color: var(--color-accent); }
-#roles-teacher-email, .role-choice small { display: block; color: var(--color-muted); font-size: 12px; margin-top: 3px; font-weight: 400; }
-.roles-modal .role-section { transition: border-color .15s, background .15s; }
-.roles-modal .role-section:has(> .role-choice input:checked) { border-color: var(--color-accent); background: #fffcf6; }
-.roles-save-note { margin-bottom: 0; }
-.roles-modal fieldset { border: 0; min-width: 0; }
-.assignment-hint { font-size: 13px; color: var(--color-muted); line-height: 1.5; margin-bottom: 16px; }
-.assignment-status { margin-bottom: 16px; font-size: 14px; line-height: 1.5; }
-.assignment-status.is-error { color: #A6402F; }
-.role-section { border: 1px solid var(--color-border); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
-.role-choice { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; cursor: pointer; line-height: 1.5; }
-.role-choice input { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; accent-color: var(--color-accent); }
-.role-choice:has(input:disabled) { color: var(--color-muted); cursor: not-allowed; }
-#advisor-assignment, #subject-assignments { margin-top: 14px; }
-.subject-choices { display: grid; gap: 12px; max-height: 200px; overflow-y: auto; }
-#retry-roles { margin-bottom: 16px; }
-#retry-teachers { margin-bottom: 16px; }
+[hidden] {
+  display: none !important;
+}
+.teacher-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+#modal-assign-roles {
+  z-index: 300;
+  padding: 16px;
+}
+.modal.roles-modal {
+  max-width: 580px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.edit-teacher-roles {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+.edit-teacher-roles:hover {
+  background: #f8f2e8;
+  border-color: var(--color-accent);
+}
+.edit-teacher-roles:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.roles-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-accent);
+  margin-bottom: 8px;
+}
+.roles-teacher-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f7f5f0;
+  margin-bottom: 20px;
+  overflow-wrap: anywhere;
+}
+.roles-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #eee5d5;
+  color: var(--color-accent);
+}
+#roles-teacher-email,
+.role-choice small {
+  display: block;
+  color: var(--color-muted);
+  font-size: 12px;
+  margin-top: 3px;
+  font-weight: 400;
+}
+.roles-modal .role-section {
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.roles-modal .role-section:has(> .role-choice input:checked) {
+  border-color: var(--color-accent);
+  background: #fffcf6;
+}
+.roles-save-note {
+  margin-bottom: 0;
+}
+.roles-modal fieldset {
+  border: 0;
+  min-width: 0;
+}
+.assignment-hint {
+  font-size: 13px;
+  color: var(--color-muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+.assignment-status {
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.assignment-status.is-error {
+  color: #a6402f;
+}
+.role-section {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.role-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1.5;
+}
+.role-choice input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--color-accent);
+}
+.role-choice:has(input:disabled) {
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+#advisor-assignment,
+#subject-assignments {
+  margin-top: 14px;
+}
+.subject-choices {
+  display: grid;
+  gap: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+#retry-roles {
+  margin-bottom: 16px;
+}
+#retry-teachers {
+  margin-bottom: 16px;
+}
 
 /* Keep large teaching loads readable without making every row tall. */
-.main-content { min-width: 0; }
-.table-filters { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
-.table-filters > div { flex: 1 1 180px; max-width: 320px; min-width: 0; }
-.table-filters label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
-.table-filters select, .grade-picker summary {
-  width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--color-border);
-  border-radius: 6px; background: #fff; color: var(--color-text); font: inherit; font-size: 16px;
+.main-content {
+  min-width: 0;
 }
-.grade-picker summary { cursor: pointer; }
-.grade-picker summary:focus-visible, .table-filters select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-.modal .field .grade-picker select { margin-top: 6px; padding: 0; height: 220px; overflow-y: auto; font-size: 16px; }
-.grade-picker option { padding: 12px; min-height: 44px; }
-#tab-classes .grades-table-section, #tab-subjects .grades-table-section { overflow-x: auto; }
-#tab-classes .grades-table { min-width: 650px; }
-#tab-subjects .grades-table { min-width: 480px; }
+.table-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.table-filters > div {
+  flex: 1 1 180px;
+  max-width: 320px;
+  min-width: 0;
+}
+.table-filters label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.table-filters select,
+.grade-picker summary {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 16px;
+}
+.grade-picker summary {
+  cursor: pointer;
+}
+.grade-picker summary:focus-visible,
+.table-filters select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.modal .field .grade-picker select {
+  margin-top: 6px;
+  padding: 0;
+  height: 220px;
+  overflow-y: auto;
+  font-size: 16px;
+}
+.grade-picker option {
+  padding: 12px;
+  min-height: 44px;
+}
+#tab-classes .grades-table-section,
+#tab-subjects .grades-table-section {
+  overflow-x: auto;
+}
+#tab-classes .grades-table {
+  min-width: 650px;
+}
+#tab-subjects .grades-table {
+  min-width: 480px;
+}
 @media (max-width: 480px) {
-  .table-filters > div { flex-basis: 100%; max-width: none; }
+  .table-filters > div {
+    flex-basis: 100%;
+    max-width: none;
+  }
 }
-.teacher-table-section { overflow-x: auto; }
-.teacher-table { min-width: 1080px; }
-.teacher-table th { white-space: nowrap; }
-.teacher-table td { vertical-align: top; padding-top: 20px; padding-bottom: 20px; line-height: 1.5; }
-.teacher-name { font-weight: 500; min-width: 130px; max-width: 190px; overflow-wrap: anywhere; }
-.teacher-email { max-width: 240px; overflow-wrap: anywhere; }
-.teacher-homeroom { min-width: 170px; max-width: 240px; overflow-wrap: anywhere; }
-.teacher-role-list { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-.teacher-role-badge { display: inline-block; border-radius: 6px; padding: 4px 9px; font-size: 12px; font-weight: 500; white-space: nowrap; }
-.role-class-advisor { background: #E5EFEC; color: #23594D; }
-.role-subject-teacher { background: #FCF0DD; color: #875716; }
-.teacher-assignments { min-width: 250px; max-width: 350px; }
-.assignment-count { color: var(--color-muted); font-size: 12px; margin-bottom: 8px; }
-.teaching-assignment-list { list-style: none; display: grid; gap: 8px; padding: 0; margin: 0; }
-.teaching-assignment-list.is-expanded { max-height: 300px; overflow-y: auto; padding-right: 8px; }
-.teaching-assignment-list li { border-left: 2px solid var(--color-border); padding-left: 10px; overflow-wrap: anywhere; }
-.assignment-subject { display: block; font-size: 13px; font-weight: 500; }
-.assignment-class { display: block; font-size: 12px; color: var(--color-muted); margin-top: 1px; }
-.assignment-empty { color: var(--color-muted); font-size: 13px; }
-.assignment-toggle { border: 0; background: none; color: #875716; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 8px 0 0; }
-.assignment-toggle:hover { text-decoration: underline; }
-.assignment-toggle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; border-radius: 2px; }
+.teacher-table-section {
+  overflow-x: auto;
+}
+.teacher-table {
+  min-width: 1080px;
+}
+.teacher-table th {
+  white-space: nowrap;
+}
+.teacher-table td {
+  vertical-align: top;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  line-height: 1.5;
+}
+.teacher-name {
+  font-weight: 500;
+  min-width: 130px;
+  max-width: 190px;
+  overflow-wrap: anywhere;
+}
+.teacher-email {
+  max-width: 240px;
+  overflow-wrap: anywhere;
+}
+.teacher-homeroom {
+  min-width: 170px;
+  max-width: 240px;
+  overflow-wrap: anywhere;
+}
+.teacher-role-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.teacher-role-badge {
+  display: inline-block;
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.role-class-advisor {
+  background: #e5efec;
+  color: #23594d;
+}
+.role-subject-teacher {
+  background: #fcf0dd;
+  color: #875716;
+}
+.teacher-assignments {
+  min-width: 250px;
+  max-width: 350px;
+}
+.assignment-count {
+  color: var(--color-muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.teaching-assignment-list {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+}
+.teaching-assignment-list.is-expanded {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.teaching-assignment-list li {
+  border-left: 2px solid var(--color-border);
+  padding-left: 10px;
+  overflow-wrap: anywhere;
+}
+.assignment-subject {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+.assignment-class {
+  display: block;
+  font-size: 12px;
+  color: var(--color-muted);
+  margin-top: 1px;
+}
+.assignment-empty {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.assignment-toggle {
+  border: 0;
+  background: none;
+  color: #875716;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0 0;
+}
+.assignment-toggle:hover {
+  text-decoration: underline;
+}
+.assignment-toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
 
 .status-pill {
   display: inline-flex;
@@ -90,8 +345,14 @@
   font-weight: 600;
 }
 
-.status-active { background: #E9F3EA; color: #2E6B3E; }
-.status-inactive { background: #F1EFE9; color: #6E7B76; }
+.status-active {
+  background: #e9f3ea;
+  color: #2e6b3e;
+}
+.status-inactive {
+  background: #f1efe9;
+  color: #6e7b76;
+}
 
 .btn-secondary {
   padding: 10px 16px;
@@ -175,8 +436,12 @@
   font-size: 14px;
 }
 
-.teacher-password-field { position: relative; }
-.modal .field .teacher-password-field input { padding-right: 46px; }
+.teacher-password-field {
+  position: relative;
+}
+.modal .field .teacher-password-field input {
+  padding-right: 46px;
+}
 .teacher-password-toggle {
   position: absolute;
   right: 4px;
@@ -191,8 +456,12 @@
   font-size: 18px;
   cursor: pointer;
 }
-.teacher-password-toggle:hover { color: var(--color-accent); }
-.teacher-password-toggle:focus-visible { outline: 2px solid var(--color-accent); }
+.teacher-password-toggle:hover {
+  color: var(--color-accent);
+}
+.teacher-password-toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+}
 
 .modal-actions {
   display: flex;
@@ -231,6 +500,100 @@
   }
 }
 
-#toggle-teacher-account { color: #a6402f; margin-right: auto; }
-#toggle-teacher-account:disabled { opacity: .6; cursor: wait; }
-.roles-modal .modal-actions { flex-wrap: wrap; }
+#toggle-teacher-account {
+  color: #a6402f;
+  margin-right: auto;
+}
+#toggle-teacher-account:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.roles-modal .modal-actions {
+  flex-wrap: wrap;
+}
+
+/* Destructive controls stay visually distinct from everyday creation actions. */
+.btn-clear-data {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid #e8b9b5;
+  border-radius: 8px;
+  background: #fff;
+  color: #a52a24;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-clear-data:hover {
+  background: #fff1f0;
+  border-color: #a52a24;
+}
+.btn-clear-data:focus-visible {
+  outline: 3px solid #da938c;
+  outline-offset: 3px;
+}
+.btn-clear-data:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-clear-data.is-solid {
+  background: #ad3029;
+  color: #fff;
+  border-color: #ad3029;
+}
+.clear-data-dialog {
+  width: min(520px, calc(100% - 32px));
+  max-height: 90vh;
+  overflow: auto;
+  margin: auto;
+  padding: 28px;
+  border: 1px solid #e8d5d3;
+  border-radius: 16px;
+  color: #302b2a;
+  box-shadow: 0 24px 80px #0003;
+}
+.clear-data-dialog::backdrop {
+  background: #17121088;
+}
+.clear-data-dialog h2 {
+  margin: 16px 0 10px;
+}
+.clear-data-dialog p {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+.clear-data-icon {
+  display: inline-flex;
+  padding: 12px;
+  background: #fff1f0;
+  color: #ad3029;
+  border-radius: 12px;
+  font-size: 24px;
+}
+.clear-data-target {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.clear-data-warning {
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff1f0;
+  color: #8d2822;
+}
+#clear-data-error {
+  color: #a52a24;
+}
+@media (max-width: 540px) {
+  .clear-data-dialog {
+    padding: 20px;
+  }
+  .clear-data-dialog .modal-actions {
+    flex-wrap: wrap;
+  }
+}

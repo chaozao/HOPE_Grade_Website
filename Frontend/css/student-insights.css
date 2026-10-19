@@ -33,11 +33,21 @@
   transition: width 0.3s ease;
 }
 
-.seg-a { background: #4C9A5A; }
-.seg-b { background: #E0B03D; }
-.seg-c { background: #E08A3D; }
-.seg-f { background: #C24B3F; }
-.seg-notgraded { background: #D9D4C8; }
+.seg-a {
+  background: #4c9a5a;
+}
+.seg-b {
+  background: #e0b03d;
+}
+.seg-c {
+  background: #e08a3d;
+}
+.seg-f {
+  background: #c24b3f;
+}
+.seg-notgraded {
+  background: #d9d4c8;
+}
 
 .distribution-legend {
   display: flex;
@@ -87,8 +97,8 @@
 }
 
 .component-card.lowest {
-  border-color: #C24B3F;
-  background: #FDF2F0;
+  border-color: #c24b3f;
+  background: #fdf2f0;
 }
 
 /* At-risk list */

@@ -1,225 +1,290 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const token = getToken();
-    if (!token || getPayload(token)?.role !== 'admin') return;
-    const byId = id => document.getElementById(id);
-    const modal = byId('modal-assign-roles');
-    const teacherSelect = byId('roles-teacher');
-    const homeroomSelect = byId('roles-homeroom');
-    const advisorCheck = byId('role-advisor');
-    const subjectCheck = byId('role-subject-teacher');
-    let teachers = [], classes = [], subjects = [];
-    let saving = false;
-    let loadVersion = 0;
-    let selectedTeacherId = null;
-    let opener = null;
+  const token = getToken();
+  if (!token || getPayload(token)?.role !== 'admin') return;
+  const byId = (id) => document.getElementById(id);
+  const modal = byId('modal-assign-roles');
+  const teacherSelect = byId('roles-teacher');
+  const homeroomSelect = byId('roles-homeroom');
+  const advisorCheck = byId('role-advisor');
+  const subjectCheck = byId('role-subject-teacher');
+  let teachers = [],
+    classes = [],
+    subjects = [];
+  let saving = false;
+  let loadVersion = 0;
+  let selectedTeacherId = null;
+  let opener = null;
 
-    function status(message, error = false) {
-        byId('roles-status').textContent = message;
-        byId('roles-status').hidden = !message;
-        byId('roles-status').classList.toggle('is-error', error);
+  function status(message, error = false) {
+    byId('roles-status').textContent = message;
+    byId('roles-status').hidden = !message;
+    byId('roles-status').classList.toggle('is-error', error);
+  }
+
+  async function request(path, options = {}) {
+    const response = await fetch(API_BASE_URL + path, {
+      ...options,
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
+    });
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error(
+        'The server could not load Assign Roles. Make sure the updated backend is running.'
+      );
     }
+    if (!response.ok) throw new Error(data.error || 'Could not save assignments.');
+    return data;
+  }
 
-    async function request(path, options = {}) {
-        const response = await fetch(API_BASE_URL + path, {
-            ...options,
-            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
-        });
-        let data;
-        try { data = await response.json(); }
-        catch { throw new Error('The server could not load Assign Roles. Make sure the updated backend is running.'); }
-        if (!response.ok) throw new Error(data.error || 'Could not save assignments.');
-        return data;
+  function updateRoleFields() {
+    byId('advisor-assignment').hidden = !advisorCheck.checked;
+    homeroomSelect.disabled = !advisorCheck.checked;
+    homeroomSelect.required = advisorCheck.checked;
+    byId('subject-assignments').hidden = !subjectCheck.checked;
+  }
+
+  function selectTeacher() {
+    const teacher = teachers.find((item) => item._id === teacherSelect.value);
+    byId('roles-teacher-name').textContent = teacher?.username || 'Teacher';
+    byId('roles-teacher-email').textContent = teacher?.email || '';
+    byId('toggle-teacher-account').hidden = !selectedTeacherId || !teacher;
+    byId('toggle-teacher-account').textContent = teacher?.isActive ? 'Deactivate' : 'Reactivate';
+    advisorCheck.checked = Boolean(teacher?.advisoryClassId);
+    subjectCheck.checked = Boolean(teacher?.subjectIds?.length);
+    homeroomSelect.replaceChildren(new Option('Select a homeroom', ''));
+    classes.forEach(function (item) {
+      const occupied = item.adviser && item.adviser._id !== teacherSelect.value;
+      const option = new Option(
+        item.name + (occupied ? ' — assigned to ' + item.adviser.username : ''),
+        item._id
+      );
+      option.disabled = Boolean(occupied);
+      homeroomSelect.appendChild(option);
+    });
+    homeroomSelect.value = teacher?.advisoryClassId || '';
+    byId('roles-subjects').replaceChildren();
+    subjects.forEach(function (item) {
+      const label = document.createElement('label');
+      label.className = 'role-choice';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.value = item._id;
+      input.checked = Boolean(teacher?.subjectIds?.includes(item._id));
+      input.disabled = Boolean(item.teacher && item.teacher._id !== teacherSelect.value);
+      const text = document.createElement('span');
+      text.textContent =
+        item.name +
+        ' — ' +
+        (item.class?.name || 'No class') +
+        (input.disabled ? ' (assigned to ' + item.teacher.username + ')' : '');
+      label.append(input, text);
+      byId('roles-subjects').appendChild(label);
+    });
+    if (!subjects.length)
+      byId('roles-subjects').textContent =
+        'No subjects yet. Create a subject in the Subjects menu first.';
+    updateRoleFields();
+    status('');
+  }
+
+  async function loadAssignments() {
+    const version = ++loadVersion;
+    byId('roles-fields').disabled = true;
+    byId('save-roles').disabled = true;
+    byId('toggle-teacher-account').disabled = true;
+    byId('retry-roles').hidden = true;
+    status('Loading assignments…');
+    try {
+      const data = await Promise.all([
+        request('/admin/teachers'),
+        request('/admin/classes'),
+        request('/admin/subjects')
+      ]);
+      if (version !== loadVersion) return;
+      [teachers, classes, subjects] = data;
+      teacherSelect.replaceChildren();
+      teachers.forEach((item) =>
+        teacherSelect.appendChild(new Option(item.username + ' — ' + item.email, item._id))
+      );
+      if (selectedTeacherId) {
+        teacherSelect.value = selectedTeacherId;
+        if (!teacherSelect.value)
+          throw new Error(
+            'This teacher is no longer available. Close this dialog and refresh the table.'
+          );
+      }
+      if (!teachers.length) {
+        status('No teacher accounts yet. Add a teacher first.');
+        return;
+      }
+      selectTeacher();
+      byId('roles-fields').disabled = false;
+      byId('save-roles').disabled = false;
+      byId('toggle-teacher-account').disabled = false;
+      (selectedTeacherId ? advisorCheck : teacherSelect).focus();
+    } catch (error) {
+      if (version !== loadVersion) return;
+      status('Could not load assignments: ' + error.message, true);
+      byId('retry-roles').hidden = false;
     }
+  }
 
-    function updateRoleFields() {
-        byId('advisor-assignment').hidden = !advisorCheck.checked;
-        homeroomSelect.disabled = !advisorCheck.checked;
-        homeroomSelect.required = advisorCheck.checked;
-        byId('subject-assignments').hidden = !subjectCheck.checked;
-    }
+  function close() {
+    if (saving) return;
+    ++loadVersion;
+    modal.classList.add('hidden');
+    if (opener?.isConnected) opener.focus();
+    else byId('open-assign-roles').focus();
+  }
 
-    function selectTeacher() {
-        const teacher = teachers.find(item => item._id === teacherSelect.value);
-        byId('roles-teacher-name').textContent = teacher?.username || 'Teacher';
-        byId('roles-teacher-email').textContent = teacher?.email || '';
-        byId('toggle-teacher-account').hidden = !selectedTeacherId || !teacher;
-        byId('toggle-teacher-account').textContent = teacher?.isActive ? 'Deactivate' : 'Reactivate';
-        advisorCheck.checked = Boolean(teacher?.advisoryClassId);
-        subjectCheck.checked = Boolean(teacher?.subjectIds?.length);
-        homeroomSelect.replaceChildren(new Option('Select a homeroom', ''));
-        classes.forEach(function (item) {
-            const occupied = item.adviser && item.adviser._id !== teacherSelect.value;
-            const option = new Option(item.name + (occupied ? ' — assigned to ' + item.adviser.username : ''), item._id);
-            option.disabled = Boolean(occupied);
-            homeroomSelect.appendChild(option);
-        });
-        homeroomSelect.value = teacher?.advisoryClassId || '';
-        byId('roles-subjects').replaceChildren();
-        subjects.forEach(function (item) {
-            const label = document.createElement('label');
-            label.className = 'role-choice';
-            const input = document.createElement('input');
-            input.type = 'checkbox';
-            input.value = item._id;
-            input.checked = Boolean(teacher?.subjectIds?.includes(item._id));
-            input.disabled = Boolean(item.teacher && item.teacher._id !== teacherSelect.value);
-            const text = document.createElement('span');
-            text.textContent = item.name + ' — ' + (item.class?.name || 'No class') + (input.disabled ? ' (assigned to ' + item.teacher.username + ')' : '');
-            label.append(input, text);
-            byId('roles-subjects').appendChild(label);
-        });
-        if (!subjects.length) byId('roles-subjects').textContent = 'No subjects yet. Create a subject in the Subjects menu first.';
-        updateRoleFields();
-        status('');
-    }
-
-    async function loadAssignments() {
-        const version = ++loadVersion;
-        byId('roles-fields').disabled = true;
-        byId('save-roles').disabled = true;
-        byId('toggle-teacher-account').disabled = true;
-        byId('retry-roles').hidden = true;
-        status('Loading assignments…');
-        try {
-            const data = await Promise.all([
-                request('/admin/teachers'), request('/admin/classes'), request('/admin/subjects')
-            ]);
-            if (version !== loadVersion) return;
-            [teachers, classes, subjects] = data;
-            teacherSelect.replaceChildren();
-            teachers.forEach(item => teacherSelect.appendChild(new Option(item.username + ' — ' + item.email, item._id)));
-            if (selectedTeacherId) {
-                teacherSelect.value = selectedTeacherId;
-                if (!teacherSelect.value) throw new Error('This teacher is no longer available. Close this dialog and refresh the table.');
-            }
-            if (!teachers.length) {
-                status('No teacher accounts yet. Add a teacher first.');
-                return;
-            }
-            selectTeacher();
-            byId('roles-fields').disabled = false;
-            byId('save-roles').disabled = false;
-            byId('toggle-teacher-account').disabled = false;
-            (selectedTeacherId ? advisorCheck : teacherSelect).focus();
-        } catch (error) {
-            if (version !== loadVersion) return;
-            status('Could not load assignments: ' + error.message, true);
-            byId('retry-roles').hidden = false;
+  function openEditor(button, teacherId = null) {
+    opener = button;
+    selectedTeacherId = teacherId;
+    teacherSelect.disabled = Boolean(teacherId);
+    teacherSelect.parentElement.hidden = Boolean(teacherId);
+    byId('roles-teacher-card').hidden = !teacherId;
+    byId('roles-teacher-name').textContent = 'Loading teacher…';
+    byId('roles-teacher-email').textContent = '';
+    byId('toggle-teacher-account').hidden = true;
+    modal.classList.remove('hidden');
+    byId('cancel-roles').focus();
+    loadAssignments();
+  }
+  byId('open-assign-roles').addEventListener('click', function () {
+    openEditor(this);
+  });
+  byId('teachers-tbody').addEventListener('click', function (event) {
+    const button = event.target.closest('.edit-teacher-roles');
+    if (button) openEditor(button, button.dataset.id);
+  });
+  byId('cancel-roles').addEventListener('click', close);
+  byId('retry-roles').addEventListener('click', loadAssignments);
+  async function changeAccount() {
+    if (saving || byId('roles-fields').disabled || !selectedTeacherId) return;
+    const teacher = teachers.find((item) => item._id === selectedTeacherId);
+    if (!teacher) return;
+    const action = teacher.isActive ? 'Deactivate' : 'Reactivate';
+    const explanation = teacher.isActive
+      ? 'Teacher access will be blocked. Assignments are kept.'
+      : 'Teacher access will be restored.';
+    if (
+      !window.confirm(
+        action +
+          ' the account for ' +
+          teacher.username +
+          ' (' +
+          teacher.email +
+          ')?\n\n' +
+          explanation +
+          '\n\nUnsaved role changes will not be applied.'
+      )
+    )
+      return;
+    saving = true;
+    byId('roles-fields').disabled = true;
+    byId('save-roles').disabled = true;
+    byId('toggle-teacher-account').disabled = true;
+    byId('cancel-roles').disabled = true;
+    status('Updating account access...');
+    let saved = false;
+    try {
+      const result = await request(
+        '/admin/teachers/' + encodeURIComponent(teacher._id) + '/deactivate',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ isActive: !teacher.isActive })
         }
+      );
+      saved = true;
+      const banner = byId('teacher-status');
+      banner.textContent = result.message;
+      banner.hidden = false;
+      banner.classList.remove('is-error');
+      document.dispatchEvent(new Event('teacher-roles-saved'));
+    } catch (error) {
+      status('Could not ' + action.toLowerCase() + ' account: ' + error.message, true);
+    } finally {
+      saving = false;
+      byId('roles-fields').disabled = false;
+      byId('save-roles').disabled = false;
+      byId('toggle-teacher-account').disabled = false;
+      byId('cancel-roles').disabled = false;
+      if (saved) close();
     }
-
-    function close() {
-        if (saving) return;
-        ++loadVersion;
-        modal.classList.add('hidden');
-        if (opener?.isConnected) opener.focus();
-        else byId('open-assign-roles').focus();
+  }
+  byId('toggle-teacher-account').addEventListener('click', changeAccount);
+  teacherSelect.addEventListener('change', selectTeacher);
+  advisorCheck.addEventListener('change', updateRoleFields);
+  subjectCheck.addEventListener('change', updateRoleFields);
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) close();
+  });
+  modal.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') close();
+    if (event.key !== 'Tab') return;
+    const controls = Array.from(modal.querySelectorAll('button, select, input')).filter(
+      (item) => !item.matches(':disabled') && item.getClientRects().length
+    );
+    const first = controls[0],
+      last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
     }
-
-    function openEditor(button, teacherId = null) {
-        opener = button;
-        selectedTeacherId = teacherId;
-        teacherSelect.disabled = Boolean(teacherId);
-        teacherSelect.parentElement.hidden = Boolean(teacherId);
-        byId('roles-teacher-card').hidden = !teacherId;
-        byId('roles-teacher-name').textContent = 'Loading teacher…';
-        byId('roles-teacher-email').textContent = '';
-        byId('toggle-teacher-account').hidden = true;
-        modal.classList.remove('hidden');
-        byId('cancel-roles').focus();
-        loadAssignments();
+  });
+  byId('form-assign-roles').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    if (saving || byId('roles-fields').disabled) return;
+    const roles = [];
+    if (advisorCheck.checked) roles.push('class-advisor');
+    if (subjectCheck.checked) roles.push('subject-teacher');
+    const subjectIds = subjectCheck.checked
+      ? Array.from(
+          byId('roles-subjects').querySelectorAll('input:checked:not(:disabled)'),
+          (input) => input.value
+        )
+      : [];
+    if (subjectCheck.checked && !subjectIds.length) {
+      status('Select at least one teaching subject.', true);
+      return;
     }
-    byId('open-assign-roles').addEventListener('click', function () {
-        openEditor(this);
-    });
-    byId('teachers-tbody').addEventListener('click', function (event) {
-        const button = event.target.closest('.edit-teacher-roles');
-        if (button) openEditor(button, button.dataset.id);
-    });
-    byId('cancel-roles').addEventListener('click', close);
-    byId('retry-roles').addEventListener('click', loadAssignments);
-    async function changeAccount() {
-        if (saving || byId('roles-fields').disabled || !selectedTeacherId) return;
-        const teacher = teachers.find(item => item._id === selectedTeacherId);
-        if (!teacher) return;
-        const action = teacher.isActive ? 'Deactivate' : 'Reactivate';
-        const explanation = teacher.isActive ? 'Teacher access will be blocked. Assignments are kept.' : 'Teacher access will be restored.';
-        if (!window.confirm(action + ' the account for ' + teacher.username + ' (' + teacher.email + ')?\n\n' + explanation + '\n\nUnsaved role changes will not be applied.')) return;
-        saving = true;
-        byId('roles-fields').disabled = true;
-        byId('save-roles').disabled = true;
-        byId('toggle-teacher-account').disabled = true;
-        byId('cancel-roles').disabled = true;
-        status('Updating account access...');
-        let saved = false;
-        try {
-            const result = await request('/admin/teachers/' + encodeURIComponent(teacher._id) + '/deactivate', {
-                method: 'PATCH',
-                body: JSON.stringify({ isActive: !teacher.isActive })
-            });
-            saved = true;
-            const banner = byId('teacher-status');
-            banner.textContent = result.message;
-            banner.hidden = false;
-            banner.classList.remove('is-error');
-            document.dispatchEvent(new Event('teacher-roles-saved'));
-        } catch (error) {
-            status('Could not ' + action.toLowerCase() + ' account: ' + error.message, true);
-        } finally {
-            saving = false;
-            byId('roles-fields').disabled = false;
-            byId('save-roles').disabled = false;
-            byId('toggle-teacher-account').disabled = false;
-            byId('cancel-roles').disabled = false;
-            if (saved) close();
-        }
+    const body = {
+      roles,
+      advisoryClassId: advisorCheck.checked ? homeroomSelect.value : null,
+      subjectIds
+    };
+    saving = true;
+    byId('roles-fields').disabled = true;
+    byId('save-roles').disabled = true;
+    byId('toggle-teacher-account').disabled = true;
+    byId('cancel-roles').disabled = true;
+    status('Saving roles…');
+    let saved = false;
+    try {
+      const result = await request(
+        '/admin/teachers/' + encodeURIComponent(teacherSelect.value) + '/roles',
+        { method: 'PUT', body: JSON.stringify(body) }
+      );
+      saved = true;
+      const banner = byId('teacher-status');
+      banner.textContent = result.message;
+      banner.hidden = false;
+      banner.classList.remove('is-error');
+      document.dispatchEvent(new Event('teacher-roles-saved'));
+    } catch (error) {
+      status('Could not save roles: ' + error.message, true);
+    } finally {
+      saving = false;
+      byId('roles-fields').disabled = false;
+      byId('save-roles').disabled = false;
+      byId('toggle-teacher-account').disabled = false;
+      byId('cancel-roles').disabled = false;
+      if (saved) close();
     }
-    byId('toggle-teacher-account').addEventListener('click', changeAccount);
-    teacherSelect.addEventListener('change', selectTeacher);
-    advisorCheck.addEventListener('change', updateRoleFields);
-    subjectCheck.addEventListener('change', updateRoleFields);
-    modal.addEventListener('click', event => { if (event.target === modal) close(); });
-    modal.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') close();
-        if (event.key !== 'Tab') return;
-        const controls = Array.from(modal.querySelectorAll('button, select, input')).filter(item => !item.matches(':disabled') && item.getClientRects().length);
-        const first = controls[0], last = controls[controls.length - 1];
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-    });
-    byId('form-assign-roles').addEventListener('submit', async function (event) {
-        event.preventDefault();
-        if (saving || byId('roles-fields').disabled) return;
-        const roles = [];
-        if (advisorCheck.checked) roles.push('class-advisor');
-        if (subjectCheck.checked) roles.push('subject-teacher');
-        const subjectIds = subjectCheck.checked ? Array.from(byId('roles-subjects').querySelectorAll('input:checked:not(:disabled)'), input => input.value) : [];
-        if (subjectCheck.checked && !subjectIds.length) { status('Select at least one teaching subject.', true); return; }
-        const body = { roles, advisoryClassId: advisorCheck.checked ? homeroomSelect.value : null, subjectIds };
-        saving = true;
-        byId('roles-fields').disabled = true;
-        byId('save-roles').disabled = true;
-        byId('toggle-teacher-account').disabled = true;
-        byId('cancel-roles').disabled = true;
-        status('Saving roles…');
-        let saved = false;
-        try {
-            const result = await request('/admin/teachers/' + encodeURIComponent(teacherSelect.value) + '/roles', { method: 'PUT', body: JSON.stringify(body) });
-            saved = true;
-            const banner = byId('teacher-status');
-            banner.textContent = result.message;
-            banner.hidden = false;
-            banner.classList.remove('is-error');
-            document.dispatchEvent(new Event('teacher-roles-saved'));
-        } catch (error) {
-            status('Could not save roles: ' + error.message, true);
-        } finally {
-            saving = false;
-            byId('roles-fields').disabled = false;
-            byId('save-roles').disabled = false;
-            byId('toggle-teacher-account').disabled = false;
-            byId('cancel-roles').disabled = false;
-            if (saved) close();
-        }
-    });
+  });
 });

@@ -9,14 +9,17 @@ workspaceStyle.textContent = `
   .workspace-pending .workspace-load-state { display: block; position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 200; padding: 12px 20px; border-radius: 8px; background: #fff; color: #243c3c; box-shadow: 0 2px 12px #0002; font: 14px/1.5 sans-serif; }
 `;
 document.head.appendChild(workspaceStyle);
-if (location.pathname.endsWith('/dashboard.html')) document.documentElement.dataset.workspaceDashboard = '';
+if (location.pathname.endsWith('/dashboard.html'))
+  document.documentElement.dataset.workspaceDashboard = '';
 document.addEventListener('DOMContentLoaded', function () {
-    const status = document.createElement('div');
-    status.className = 'workspace-load-state';
-    status.setAttribute('role', 'status');
-    status.append('Loading your workspace… ');
-    const retry = document.createElement('button');
-    retry.type = 'button'; retry.textContent = 'Retry';
-    retry.addEventListener('click', () => location.reload());
-    status.appendChild(retry); document.body.appendChild(status);
+  const status = document.createElement('div');
+  status.className = 'workspace-load-state';
+  status.setAttribute('role', 'status');
+  status.append('Loading your workspace… ');
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.textContent = 'Retry';
+  retry.addEventListener('click', () => location.reload());
+  status.appendChild(retry);
+  document.body.appendChild(status);
 });

@@ -8,7 +8,11 @@ router.put('/:id/roles', verifyToken, requireRole('admin'), async (req, res) => 
     await assignTeacherRoles(req.params.id, req.body);
     res.json({ message: 'Roles and assignments saved successfully.' });
   } catch (error) {
-    res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not save roles. Please reload assignments before trying again.' });
+    res.status(error.status || 500).json({
+      error: error.status
+        ? error.message
+        : 'Could not save roles. Please reload assignments before trying again.'
+    });
   }
 });
 

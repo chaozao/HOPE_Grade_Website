@@ -4,18 +4,23 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
-const crypto = require('crypto');         // built into Node — no install needed
+const crypto = require('crypto'); // built into Node — no install needed
 const nodemailer = require('nodemailer'); // npm install nodemailer
-const multer = require('multer');         // npm install multer — handles the photo upload
-const path = require('path');             // built into Node — no install needed
-const fs = require('fs');                 // built into Node — no install needed
-const os = require('os');                 // built into Node — no install needed
+const multer = require('multer'); // npm install multer — handles the photo upload
+const path = require('path'); // built into Node — no install needed
+const fs = require('fs'); // built into Node — no install needed
+const os = require('os'); // built into Node — no install needed
 const User = require('./models/User');
 const Class = require('./models/Class');
 const Subject = require('./models/Subject');
 const Student = require('./models/Student');
 const Grade = require('./models/Grade');
-const { syncTeacherRoles, requireTeacher, validateId, invalid } = require('./services/teacher-roles');
+const {
+  syncTeacherRoles,
+  requireTeacher,
+  validateId,
+  invalid
+} = require('./services/teacher-roles');
 
 const app = express();
 app.use(cors());
@@ -31,9 +36,11 @@ app.use(express.json());
 
 // Turns "192.168.1.30" into one plain number, so addresses can be compared.
 function ipToNumber(ip) {
-  return ip.split('.').reduce(function (total, octet) {
-    return (total << 8) + Number(octet);
-  }, 0) >>> 0;
+  return (
+    ip.split('.').reduce(function (total, octet) {
+      return (total << 8) + Number(octet);
+    }, 0) >>> 0
+  );
 }
 
 function isOnAllowedNetwork(ip) {
@@ -65,12 +72,15 @@ function isOnAllowedNetwork(ip) {
 
 app.use(function (req, res, next) {
   if (!isOnAllowedNetwork(req.ip)) {
-    return res.status(403).json({ error: 'This server is only reachable from its home Wi-Fi network.' });
+    return res
+      .status(403)
+      .json({ error: 'This server is only reachable from its home Wi-Fi network.' });
   }
   next();
 });
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => {
     console.log('Connected to MongoDB successfully!');
   })
@@ -130,7 +140,6 @@ app.post('/signup', async (req, res) => {
 
     console.log('New user saved to database:', newUser);
     res.json({ message: `Thank you for signing up, ${username}!` });
-
   } catch (error) {
     console.log('Something went wrong while saving the user:');
     console.log(error);
@@ -152,7 +161,9 @@ app.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid email or password.' });
     }
     if (!user.isActive) {
-  return res.status(403).json({ error: 'This account has been deactivated. Contact your admin.' });
+      return res
+        .status(403)
+        .json({ error: 'This account has been deactivated. Contact your admin.' });
     }
 
     // 2. Compare the typed password with the hashed one in the database
@@ -162,23 +173,21 @@ app.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid email or password.' });
     }
 
-
-  // 3. Create the "wristband" (JWT token) - now includes the role! 
-  // Checked "remember me"? Give it a much longer expiry (30 days) instead of 1 hour.
-  // Resolve the workspace before returning login, so the browser opens it directly.
-  const isAdviser = user.role === 'teacher' && Boolean(await Class.exists({ adviser: user._id }));
-  const token = jwt.sign(
-    { userId: user._id, username: user.username, role: user.role, isAdviser },
-    process.env.JWT_SECRET,
-    { expiresIn: remember ? '30d' : '1h' }
-  );
+    // 3. Create the "wristband" (JWT token) - now includes the role!
+    // Checked "remember me"? Give it a much longer expiry (30 days) instead of 1 hour.
+    // Resolve the workspace before returning login, so the browser opens it directly.
+    const isAdviser = user.role === 'teacher' && Boolean(await Class.exists({ adviser: user._id }));
+    const token = jwt.sign(
+      { userId: user._id, username: user.username, role: user.role, isAdviser },
+      process.env.JWT_SECRET,
+      { expiresIn: remember ? '30d' : '1h' }
+    );
 
     // 4. Send the wristband back to the user
     res.json({
       message: `Welcome back, ${user.username}!`,
       token: token
     });
-
   } catch (error) {
     console.log('Something went wrong during login:');
     console.log(error);
@@ -221,7 +230,6 @@ app.post('/forget-password', async (req, res) => {
     }
 
     res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
-
   } catch (error) {
     console.log('Something went wrong during forget-password:');
     console.log(error);
@@ -234,7 +242,9 @@ app.post('/reset-password', async (req, res) => {
     const { token, password } = req.body;
 
     if (!token || !password || password.length < 8) {
-      return res.status(400).json({ error: 'A valid token and an 8+ character password are required.' });
+      return res
+        .status(400)
+        .json({ error: 'A valid token and an 8+ character password are required.' });
     }
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
@@ -250,7 +260,6 @@ app.post('/reset-password', async (req, res) => {
     await user.save();
 
     res.json({ message: 'Password updated.' });
-
   } catch (error) {
     console.log('Something went wrong during reset-password:');
     console.log(error);
@@ -274,7 +283,9 @@ app.get('/profile', verifyToken, (req, res) => {
 // Get your own full profile
 app.get('/me', verifyToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select('-password -resetTokenHash -resetTokenExpiry');
+    const user = await User.findById(req.user.userId).select(
+      '-password -resetTokenHash -resetTokenExpiry'
+    );
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
@@ -359,7 +370,9 @@ app.put('/me/password', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'New password must be 72 characters or fewer.' });
     }
     if (!/[A-Za-z]/.test(trimmedNewPassword) || !/[0-9]/.test(trimmedNewPassword)) {
-      return res.status(400).json({ error: 'New password must include at least one letter and one number.' });
+      return res
+        .status(400)
+        .json({ error: 'New password must include at least one letter and one number.' });
     }
 
     // .select('+password') is required here since the schema hides this
@@ -374,7 +387,9 @@ app.put('/me/password', verifyToken, async (req, res) => {
 
     const isSameAsBefore = await bcrypt.compare(trimmedNewPassword, user.password);
     if (isSameAsBefore) {
-      return res.status(400).json({ error: 'New password must be different from your current password.' });
+      return res
+        .status(400)
+        .json({ error: 'New password must be different from your current password.' });
     }
 
     user.password = await bcrypt.hash(trimmedNewPassword, 10);
@@ -407,7 +422,10 @@ app.get('/admin/teachers', verifyToken, requireRole('admin'), async (req, res) =
           advisoryClassId: advisoryClass ? advisoryClass._id : null,
           subjectIds: subjectsTaught.map((s) => s._id),
           // Derive these for older accounts whose teacherRoles have not been saved yet.
-          teacherRoles: [advisoryClass && 'class-advisor', subjectsTaught.length && 'subject-teacher'].filter(Boolean),
+          teacherRoles: [
+            advisoryClass && 'class-advisor',
+            subjectsTaught.length && 'subject-teacher'
+          ].filter(Boolean),
           subjectsTaught: subjectsTaught.map((s) => s.name)
         };
       })
@@ -436,11 +454,13 @@ app.post('/admin/teachers', verifyToken, requireRole('admin'), async (req, res) 
 });
 
 app.use('/admin/teachers', require('./routes/teacher-roles'));
+app.use('/admin/clear-data', require('./routes/clear-data'));
 
 // Toggle a teacher's active/deactivated status
 app.patch('/admin/teachers/:id/deactivate', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    if (!mongoose.isObjectIdOrHexString(req.params.id)) return res.status(400).json({ error: 'Invalid teacher ID.' });
+    if (!mongoose.isObjectIdOrHexString(req.params.id))
+      return res.status(400).json({ error: 'Invalid teacher ID.' });
     if (req.body.isActive !== undefined && typeof req.body.isActive !== 'boolean') {
       return res.status(400).json({ error: 'Account status must be true or false.' });
     }
@@ -453,24 +473,31 @@ app.patch('/admin/teachers/:id/deactivate', verifyToken, requireRole('admin'), a
     teacher.isActive = req.body.isActive === undefined ? !teacher.isActive : req.body.isActive;
     await teacher.save();
 
-    res.json({ message: `${teacher.username} is now ${teacher.isActive ? 'active' : 'deactivated'}.` });
+    res.json({
+      message: `${teacher.username} is now ${teacher.isActive ? 'active' : 'deactivated'}.`
+    });
   } catch (error) {
     res.status(500).json({ error: 'Something went wrong.' });
   }
 });
-
 
 // Create a new class and assign its adviser
 app.post('/admin/classes', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const { name, adviserId, gradeLevel, section } = req.body;
     let newClass;
-    await mongoose.connection.transaction(async session => {
+    await mongoose.connection.transaction(async (session) => {
       if (adviserId) {
         await requireTeacher(adviserId, session);
-        if (await Class.exists({ adviser: adviserId }).session(session)) invalid('This teacher already has a homeroom. Change it through Assign Roles.', 409);
+        if (await Class.exists({ adviser: adviserId }).session(session))
+          invalid('This teacher already has a homeroom. Change it through Assign Roles.', 409);
       }
-      newClass = new Class({ name, adviser: adviserId || null, gradeLevel: gradeLevel || '', section: section || '' });
+      newClass = new Class({
+        name,
+        adviser: adviserId || null,
+        gradeLevel: gradeLevel || '',
+        section: section || ''
+      });
       await newClass.save({ session });
       await syncTeacherRoles(adviserId, session);
     });
@@ -494,19 +521,24 @@ app.get('/admin/classes', verifyToken, requireRole('admin'), async (req, res) =>
 // Create a new subject and assign its teacher
 app.post('/admin/subjects', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    const result = await require('./services/section-subjects').save(req.user, req.body.classId, null, req.body);
+    const result = await require('./services/section-subjects').save(
+      req.user,
+      req.body.classId,
+      null,
+      req.body
+    );
     res.json({ message: 'Subject assigned.', ...result });
   } catch (error) {
-    res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not create subject.' });
+    res
+      .status(error.status || 500)
+      .json({ error: error.status ? error.message : 'Could not create subject.' });
   }
 });
 
 // List all subjects, with their teacher and class info attached
 app.get('/admin/subjects', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    const subjects = await Subject.find()
-      .populate('teacher', 'username')
-      .populate('class', 'name');
+    const subjects = await Subject.find().populate('teacher', 'username').populate('class', 'name');
     res.json(subjects);
   } catch (error) {
     res.status(500).json({ error: 'Something went wrong fetching subjects.' });

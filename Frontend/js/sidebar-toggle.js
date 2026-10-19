@@ -1,36 +1,36 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const dashboard = document.querySelector('.dashboard');
-    const toggleBtn = document.getElementById('sidebar-toggle');
-    const backdrop = document.getElementById('sidebar-backdrop');
+  const dashboard = document.querySelector('.dashboard');
+  const toggleBtn = document.getElementById('sidebar-toggle');
+  const backdrop = document.getElementById('sidebar-backdrop');
 
-    if (!dashboard || !toggleBtn) return; // safety check - do nothing if a page is missing these
+  if (!dashboard || !toggleBtn) return; // safety check - do nothing if a page is missing these
 
-    const icon = toggleBtn.querySelector('i');
+  const icon = toggleBtn.querySelector('i');
 
-    function setOpen(isOpen) {
-        document.body.classList.toggle('sidebar-open', isOpen);
+  function setOpen(isOpen) {
+    document.body.classList.toggle('sidebar-open', isOpen);
 
-        if (icon) {
-            icon.classList.toggle('bi-chevron-right', !isOpen);
-            icon.classList.toggle('bi-chevron-left', isOpen);
-        }
-
-        toggleBtn.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+    if (icon) {
+      icon.classList.toggle('bi-chevron-right', !isOpen);
+      icon.classList.toggle('bi-chevron-left', isOpen);
     }
 
-    toggleBtn.addEventListener('click', function () {
-        setOpen(!document.body.classList.contains('sidebar-open'));
-    });
+    toggleBtn.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+  }
 
-    // Tapping the dimmed background closes the drawer, same as most apps.
-    if (backdrop) {
-        backdrop.addEventListener('click', function () {
-            setOpen(false);
-        });
-    }
+  toggleBtn.addEventListener('click', function () {
+    setOpen(!document.body.classList.contains('sidebar-open'));
+  });
 
-    // Picking a page from the menu should close the drawer behind you.
-    document.querySelector('.sidebar-nav')?.addEventListener('click', function (event) {
-        if (event.target.closest('.nav-item')) setOpen(false);
+  // Tapping the dimmed background closes the drawer, same as most apps.
+  if (backdrop) {
+    backdrop.addEventListener('click', function () {
+      setOpen(false);
     });
+  }
+
+  // Picking a page from the menu should close the drawer behind you.
+  document.querySelector('.sidebar-nav')?.addEventListener('click', function (event) {
+    if (event.target.closest('.nav-item')) setOpen(false);
+  });
 });
