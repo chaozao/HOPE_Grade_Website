@@ -176,9 +176,15 @@ app.post('/login', async (req, res) => {
     // 3. Create the "wristband" (JWT token) - now includes the role!
     // Checked "remember me"? Give it a much longer expiry (30 days) instead of 1 hour.
     // Resolve the workspace before returning login, so the browser opens it directly.
-    const isAdviser = user.role === 'teacher' && Boolean(await Class.exists({ adviser: user._id }));
+    const [advisory, teaching] = user.role === 'teacher'
+      ? await Promise.all([
+          Class.exists({ adviser: user._id }),
+          Subject.exists({ teacher: user._id })
+        ])
+      : [null, null];
+    const isAdviser = Boolean(advisory);
     const token = jwt.sign(
-      { userId: user._id, username: user.username, role: user.role, isAdviser },
+      { userId: user._id, username: user.username, role: user.role, isAdviser, hasTeaching: Boolean(teaching) },
       process.env.JWT_SECRET,
       { expiresIn: remember ? '30d' : '1h' }
     );

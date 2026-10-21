@@ -32,10 +32,14 @@ router.get(
       throw error;
     });
     const cls = classes[0];
+    const [students, subjects] = await Promise.all([
+      Student.find({ class: cls._id }).sort({ lastName: 1, firstName: 1 }),
+      Subject.find({ class: cls._id }).populate('teacher', 'username email')
+    ]);
     return {
       class: cls,
-      students: await Student.find({ class: cls._id }).sort({ lastName: 1, firstName: 1 }),
-      subjects: await Subject.find({ class: cls._id }).populate('teacher', 'username email')
+      students,
+      subjects
     };
   })
 );

@@ -25,6 +25,25 @@ test('API configuration follows the website host for local and LAN access', () =
   }
 });
 
+test('login teaching hint is available immediately and refreshed assignments take precedence', () => {
+  const source = fs.readFileSync(path.resolve(__dirname, '../js/auth.js'), 'utf8');
+  const values = new Map();
+  const context = vm.createContext({
+    atob: (value) => Buffer.from(value, 'base64').toString(),
+    sessionStorage: {
+      getItem: (key) => values.get(key) || null,
+      setItem: (key, value) => values.set(key, value)
+    }
+  });
+  vm.runInContext(source, context);
+  const token = 'test.' + Buffer.from(JSON.stringify({ isAdviser: true, hasTeaching: true })).toString('base64') + '.test';
+  assert.equal(context.workspaceHint(token).teaching, true);
+  context.rememberWorkspace(token, true, false);
+  assert.equal(context.workspaceHint(token).teaching, false);
+  const legacy = 'test.' + Buffer.from(JSON.stringify({ isAdviser: true })).toString('base64') + '.test';
+  assert.equal(context.workspaceHint(legacy).teaching, false);
+});
+
 test(
   'advisor assignment, navigation, login, and recovery flows in Chrome',
   { timeout: 90000 },
@@ -41,6 +60,7 @@ test(
     let failAccountAction = false;
     let roleSaveCount = 0;
     let releaseSubjectResponse;
+    let releaseHomeroomResponse;
     const academicFixture = require('./academic-fixtures.cjs')();
     const tokenFor = (role, isAdviser) =>
       'test.' +
@@ -181,6 +201,10 @@ test(
           });
         }
         if (route === '/adviser/my-class') {
+          if (mode === 'slow-homeroom') {
+            releaseHomeroomResponse = () => json(advisory);
+            return;
+          }
           if (mode === 'assigned-account' && !savedRoles.advisoryClassId)
             return json({ error: 'No advisory' }, 404);
           if (mode === 'teacher') return json({ error: 'No advisory' }, 404);
@@ -190,6 +214,10 @@ test(
           return json(mode === 'empty' ? { ...advisory, students: [], subjects: [] } : advisory);
         }
         if (route === '/teacher/my-subjects') {
+          if (mode === 'slow-teaching') {
+            releaseSubjectResponse = () => json(subjects);
+            return;
+          }
           if (mode === 'assigned-account')
             return json(subjects.filter((subject) => savedRoles.subjectIds.includes(subject._id)));
           if (mode === 'subjects-error') return json({ error: 'Assignments unavailable' }, 500);
@@ -463,6 +491,31 @@ test(
         );
       }
     );
+    await t.test('teaching renders while homeroom is still loading', async () => {
+      mode = 'slow-homeroom';
+      await navigate('class-advisor.html#class');
+      try {
+        await waitFor('document.getElementById("stat-subjects").textContent === "2"');
+        assert.equal(await evaluate('document.getElementById("class-nav").hidden'), false);
+        assert.equal(await evaluate('document.getElementById("view-class").hidden'), false);
+        assert.equal(await evaluate('document.getElementById("page-status").hidden'), false);
+      } finally {
+        releaseHomeroomResponse();
+      }
+      await waitFor('document.getElementById("page-status").hidden');
+    });
+    await t.test('known Class menu and homeroom appear before teaching finishes', async () => {
+      mode = 'slow-teaching';
+      await navigate('class-advisor.html');
+      try {
+        await waitFor('document.getElementById("stat-homeroom").textContent === "Grade 7"');
+        assert.equal(await evaluate('document.getElementById("class-nav").hidden'), false);
+        assert.match(await evaluate('document.getElementById("assigned-subjects-tbody").textContent'), /Loading/);
+      } finally {
+        releaseSubjectResponse();
+      }
+      await waitFor('document.getElementById("page-status").hidden');
+    });
     await t.test('failed assignment lookup keeps Class hidden and retry recovers', async () => {
       mode = 'subjects-error';
       await navigate('class-advisor.html');

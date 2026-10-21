@@ -81,7 +81,7 @@ function workspaceHint(token) {
   }
   const payload = getPayload(token);
   return typeof payload?.isAdviser === 'boolean'
-    ? { adviser: payload.isAdviser, teaching: false }
+    ? { adviser: payload.isAdviser, teaching: payload.hasTeaching === true }
     : null;
 }
 function rememberWorkspace(token, adviser, teaching = workspaceHint(token)?.teaching || false) {

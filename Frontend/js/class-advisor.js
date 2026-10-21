@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let subjects = [];
   let ready = false;
   const classBrowser = ClassBrowser.create(byId('class-browser'));
+  byId('class-nav').hidden = !workspaceHint(token)?.teaching;
 
   function showStatus(id, message, isError) {
     const status = byId(id);
@@ -74,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let view = window.location.hash.slice(1) || 'dashboard';
     if (
       !['dashboard', 'homeroom', 'class', 'requests', 'reports'].includes(view) ||
-      (view === 'class' && !subjects.length)
+      (view === 'class' && ready && !subjects.length)
     ) {
       view = 'dashboard';
       // Keep a requested Class view pending until assignments have loaded.
@@ -103,27 +104,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (view === 'class' && ready) classBrowser.show();
   }
 
-  async function init() {
-    byId('retry-btn').hidden = true;
-    showStatus('page-status', 'Loading your assignments…');
-    // Each assignment can load even if the other endpoint fails.
-    const results = await Promise.allSettled([
-      getAdvisorClass(token),
-      fetchTeacherData(token, '/teacher/my-subjects')
-    ]);
-    const errors = [];
-    if (results[0].status === 'fulfilled' && !results[0].value) {
-      window.location.replace('dashboard.html');
-      return;
-    }
-    if (results[0].status === 'fulfilled') renderHomeroom(results[0].value);
-    else errors.push('Could not load homeroom: ' + results[0].reason.message);
-
-    subjects = results[1].status === 'fulfilled' ? results[1].value : [];
-    if (results[1].status === 'rejected')
-      errors.push('Could not load teaching assignments: ' + results[1].reason.message);
+  function renderTeaching(data, failed = false) {
+    subjects = data;
     byId('class-nav').hidden = !subjects.length;
-    if (results[0].status === 'fulfilled') rememberWorkspace(token, true, subjects.length > 0);
     byId('my-requests-tab').hidden = !subjects.length;
     byId('assignments-note').hidden = !subjects.length;
     const assigned = byId('assigned-subjects-tbody');
@@ -139,20 +122,50 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!subjects.length)
       emptyRow(
         assigned,
-        results[1].status === 'rejected'
+        failed
           ? 'Teaching assignments could not load. Use Retry loading assignments.'
           : 'No subjects assigned. You can manage your advisory class in Homeroom.',
         4
       );
-    byId('stat-subjects').textContent = results[1].status === 'fulfilled' ? subjects.length : '—';
+    byId('stat-subjects').textContent = failed ? '—' : subjects.length;
     byId('teaching-note').textContent =
-      results[1].status === 'rejected'
+      failed
         ? 'Teaching assignments unavailable'
         : subjects.length
           ? 'Subjects you teach'
           : 'No subject-teaching assignments';
     classBrowser.setSubjects(subjects);
     ready = true;
+    showView();
+  }
+
+  async function init() {
+    byId('retry-btn').hidden = true;
+    showStatus('page-status', 'Loading your assignments…');
+    // Render each response immediately; a slow homeroom must not block teaching.
+    const results = await Promise.allSettled([
+      getAdvisorClass(token).then(function (advisory) {
+        if (!advisory) window.location.replace('dashboard.html');
+        else renderHomeroom(advisory);
+        return advisory;
+      }),
+      fetchTeacherData(token, '/teacher/my-subjects').then(
+        function (data) {
+          renderTeaching(data);
+        },
+        function (error) {
+          renderTeaching([], true);
+          throw error;
+        }
+      )
+    ]);
+    const errors = [];
+    if (results[0].status === 'fulfilled' && !results[0].value) return;
+    if (results[0].status === 'rejected')
+      errors.push('Could not load homeroom: ' + results[0].reason.message);
+    else rememberWorkspace(token, true, subjects.length > 0);
+    if (results[1].status === 'rejected')
+      errors.push('Could not load teaching assignments: ' + results[1].reason.message);
     showStatus('page-status', errors.join(' '), errors.length > 0);
     byId('retry-btn').hidden = !errors.length;
     showView();
