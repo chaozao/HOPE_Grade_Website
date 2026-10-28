@@ -4,10 +4,13 @@ const Subject = require('../models/Subject');
 const User = require('../models/User');
 const P = require('./academic-policy');
 const { syncTeacherRoles } = require('./teacher-roles');
+const history = require('./admin-history');
 
 async function section(actor, classId, session = null) {
-  const user = await User.findOne({ _id: actor.userId, isActive: true }).session(session);
-  if (!user || !['admin', 'teacher'].includes(user.role) || user.role !== actor.role)
+  // Load the account before checking activity, as login does. Older accounts
+  // may omit isActive in MongoDB and receive the schema's true default on load.
+  const user = await User.findOne({ _id: actor.userId }).session(session);
+  if (!user || !user.isActive || !['admin', 'teacher'].includes(user.role) || user.role !== actor.role)
     P.fail('Your account cannot manage section subjects.', 403);
   const cls = await Class.findById(P.id(classId, 'section')).session(session);
   if (!cls) P.fail('Section not found.', 404);
@@ -46,6 +49,7 @@ async function save(actor, classId, subjectId, body) {
       ? await Subject.findOne({ _id: P.id(subjectId, 'subject'), class: cls._id }).session(session)
       : new Subject({ class: cls._id });
     if (!subject) P.fail('Subject not found in this section.', 404);
+    const before = subjectId ? history.snapshot('Subject', subject) : null;
     if (subjectId) P.version(body?.version, subject.__v);
     const existing = await Subject.find({ class: cls._id }).select('name').session(session);
     if (
@@ -63,6 +67,11 @@ async function save(actor, classId, subjectId, body) {
     await subject.save({ session });
     await syncTeacherRoles(previousTeacher, session);
     if (String(previousTeacher) !== String(teacherId)) await syncTeacherRoles(teacherId, session);
+    const assignedTeacher = teacherId ? await User.findById(teacherId).session(session) : null;
+    await history.record(actor,
+      (subjectId ? 'Modified ' : 'Added ') + subject.name + ' in ' + cls.name +
+        ' — teacher: ' + (assignedTeacher?.username || 'Not assigned'),
+      [history.change('Subject', subject, before)], session);
     result = subject;
   });
   return { subject: result };

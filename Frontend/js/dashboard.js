@@ -73,11 +73,15 @@ document.addEventListener('DOMContentLoaded', function () {
   byId('refresh-history').addEventListener('click', loadTab);
   byId('retry-teacher').addEventListener('click', () => (ready ? loadTab() : init()));
   async function init() {
+    UI.status('teacher-status', 'Loading your assignments...');
+    byId('retry-teacher').hidden = true;
+    renderTeacherNavigation(workspaceHint(token)?.teaching || false);
     try {
       if (await getAdvisorClass(token)) {
         location.replace('class-advisor.html');
         return;
       }
+      renderTeacherNavigation(false);
       subjects = await UI.api('/teacher/my-subjects');
       rememberWorkspace(token, false, subjects.length > 0);
       const tbody = byId('assigned-subjects-tbody');
@@ -107,9 +111,9 @@ document.addEventListener('DOMContentLoaded', function () {
         location.replace('class-advisor.html');
         return;
       }
-      const status = document.querySelector('.workspace-load-state');
-      if (status)
-        status.firstChild.textContent = 'Could not load your workspace: ' + error.message + ' ';
+      renderTeacherNavigation(false);
+      UI.status('teacher-status', 'Could not load your assignments: ' + error.message, true);
+      byId('retry-teacher').hidden = false;
     }
   }
   async function loadMyRequests() {

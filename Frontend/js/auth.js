@@ -58,18 +58,29 @@ function getPayload(token) {
 // Advisory is an assignment, not a separate account role. Always check the
 // server so changes made by the super admin are reflected on the next visit.
 async function fetchTeacherData(token, path, allowNotFound = false) {
-  const response = await fetch(API_BASE_URL + path, {
-    headers: { Authorization: 'Bearer ' + token }
-  });
-  if (response.status === 401) {
-    clearToken();
-    window.location.href = 'index.html';
-    throw new Error('Your session has expired. Please sign in again.');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(API_BASE_URL + path, {
+      signal: controller.signal,
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (response.status === 401) {
+      clearToken();
+      window.location.href = 'index.html';
+      throw new Error('Your session has expired. Please sign in again.');
+    }
+    if (allowNotFound && response.status === 404) return null;
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not load your assignments.');
+    return data;
+  } catch (error) {
+    if (error.name === 'AbortError')
+      throw new Error('The server took too long to respond. Please retry.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  if (allowNotFound && response.status === 404) return null;
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Could not load your assignments.');
-  return data;
 }
 
 function workspaceHint(token) {

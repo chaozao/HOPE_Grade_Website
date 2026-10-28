@@ -13,7 +13,11 @@ class Element {
     this.classList = { toggle() {} };
   }
   append(...nodes) {
+    nodes.forEach((node) => { node.parent = this; });
     this.children.push(...nodes);
+  }
+  remove() {
+    if (this.parent) this.parent.children = this.parent.children.filter((node) => node !== this);
   }
   appendChild(node) {
     this.append(node);
@@ -102,8 +106,8 @@ test('enrollment totals refresh and term tables sort names without reusing legac
   let body = byId(root, 'class-grades-tbody');
   assert.equal(body.children[0].children[1].textContent, 'alpha, Ben');
   assert.equal(body.children[1].children[1].textContent, 'Zulu, Ana Lee');
-  assert.equal(body.children[0].children.length, 8);
-  assert.equal(body.children[0].children[6].textContent, '—');
+  assert.equal(body.children[0].children.length, 14);
+  assert.equal(body.children[0].children[12].textContent, '—');
   const select = byId(root, 'class-term-select');
   for (const value of ['2', '3', '4']) {
     select.value = value;
@@ -131,7 +135,7 @@ test('failed summaries offer retry and empty rosters show an enrollment message'
   findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
   await flush();
   assert.match(byId(root, 'class-grades-tbody').textContent, /No students enrolled/);
-  assert.equal(byId(root, 'class-grades-tbody').firstElementChild.firstElementChild.colSpan, 8);
+  assert.equal(byId(root, 'class-grades-tbody').firstElementChild.firstElementChild.colSpan, 14);
 });
 
 test('final grades average all three terms and require every grade, including valid zero scores', async () => {
@@ -202,14 +206,14 @@ test('activities add numbered columns only to their category and term and surviv
     inputs[1].value = '5';
     await form.events.submit({ preventDefault() {} });
   }
-  assert.equal(byId(root, 'class-grades-tbody').firstElementChild.children.length, 13);
+  assert.equal(byId(root, 'class-grades-tbody').firstElementChild.children.length, 19);
   await open();
-  assert.equal(byId(root, 'class-grades-tbody').firstElementChild.children.length, 13);
+  assert.equal(byId(root, 'class-grades-tbody').firstElementChild.children.length, 19);
   assert.match(root.textContent, /Written Work 6/);
   const select = byId(root, 'class-term-select');
   select.value = '2';
   select.events.change();
-  assert.equal(byId(root, 'class-grades-tbody').firstElementChild.children.length, 8);
+  assert.equal(byId(root, 'class-grades-tbody').firstElementChild.children.length, 14);
   select.value = '4';
   select.events.change();
   assert.equal(
@@ -225,77 +229,95 @@ test('activities add numbered columns only to their category and term and surviv
   );
 });
 
-test('edit modal populates fields, saves changes, and deletes the selected column', async () => {
-  const activity = { _id: 'a1', term: 1, category: 'writtenOral', title: 'WS 1', maxScore: 5 };
-  const data = { totalStudents: 0, activities: [activity], roster: [], gradeVersion: 0 };
-  let method;
+test('manager Undo restores only its row and is enabled only for changed values', async () => {
+  const data = { totalStudents: 0, gradeVersion: 0, roster: [], activities: [
+    { _id: 'a', term: 1, category: 'writtenOral', title: 'Work 1', maxScore: 50 },
+    { _id: 'b', term: 1, category: 'writtenOral', title: 'Work 2', maxScore: 100 }
+  ] };
+  const { root, browser } = fixture(async () => data);
+  await browser.show();
+  findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
+  await flush();
+  findAll(root, (node) => node.tag === 'button' && node.textContent === 'Manage columns')[0].events.click();
+  const category = byId(root, 'activity-manager-category');
+  category.value = 'writtenOral';
+  category.events.change();
+  const manager = findAll(root, (node) => node.className === 'activity-manager')[0];
+  const inputs = findAll(manager, (node) => node.tag === 'input');
+  const undo = findAll(manager, (node) => node.className?.includes('activity-undo'));
+  assert.deepEqual(undo.map((button) => button.disabled), [true, true]);
+  assert.equal(findAll(manager, (node) => node.textContent === 'Edit').length, 0);
+  inputs[0].value = 'Changed';
+  inputs[0].events.input();
+  assert.deepEqual(undo.map((button) => button.disabled), [false, true]);
+  inputs[1].value = '75';
+  inputs[1].events.input();
+  inputs[2].value = 'Other change';
+  inputs[2].events.input();
+  undo[0].events.click();
+  assert.equal(inputs[0].value, 'Work 1');
+  assert.equal(inputs[1].value, '50');
+  assert.equal(inputs[2].value, 'Other change');
+  assert.deepEqual(undo.map((button) => button.disabled), [true, false]);
+  inputs[2].value = 'Work 2';
+  inputs[2].events.input();
+  assert.equal(undo[1].disabled, true);
+  inputs[1].value = '';
+  inputs[1].events.input();
+  assert.equal(undo[0].disabled, false);
+  undo[0].events.click();
+  assert.equal(inputs[1].value, '50');
+  assert.equal(undo[0].disabled, true);
+  const dialog = findAll(root, (node) => node.tag === 'dialog')[0];
+  dialog.events.pointerdown({ target: dialog, clientX: 120, clientY: 120 });
+  dialog.events.click({ target: dialog, clientX: 120, clientY: 120 });
+  assert.equal(dialog.open, true);
+  dialog.events.pointerdown({ target: dialog, clientX: 20, clientY: 20 });
+  dialog.events.click({ target: dialog, clientX: 20, clientY: 20 });
+  assert.equal(dialog.open, false);
+});
+
+test('Delete is only in Manage columns, preserves other edits and handles failures', async () => {
+  const data = { totalStudents: 0, roster: [], gradeVersion: 3, activities: [
+    { _id: 'a', term: 1, category: 'writtenOral', title: 'Work 1', maxScore: 50 },
+    { _id: 'b', term: 1, category: 'writtenOral', title: 'Work 2', maxScore: 100 }
+  ] };
+  let fail = true;
   const { root, browser } = fixture(async (url, options) => {
     if (options) {
-      assert.ok(url.endsWith('/activities/a1'));
-      method = options.method;
-      const input = JSON.parse(options.body);
-      if (method === 'PUT') {
-        activity.title = input.title;
-        activity.maxScore = input.maxScore;
-      }
-      if (method === 'DELETE') data.activities = [];
-      return { activities: data.activities, gradeVersion: ++data.gradeVersion };
+      assert.equal(options.method, 'DELETE');
+      assert.ok(url.endsWith('/activities/a'));
+      assert.equal(JSON.parse(options.body).version, 3);
+      if (fail) throw new Error('Offline');
+      data.activities = data.activities.filter((item) => item._id !== 'a');
+      return { activities: data.activities, gradeVersion: 4 };
     }
     return data;
   });
   await browser.show();
   findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
   await flush();
-  const edit = () => {
-    findAll(
-      root,
-      (node) => node.tag === 'button' && node.textContent === 'Manage columns'
-    )[0].events.click();
-    findAll(
-      root,
-      (node) => node.tag === 'button' && node.className?.includes('activity-edit')
-    )[0].events.click();
-  };
-  assert.equal(
-    findAll(root, (node) => node.tag === 'button' && node.className?.includes('activity-edit'))
-      .length,
-    0,
-    'Table headers contain no edit buttons'
-  );
-  edit();
-  const dialog = findAll(root, (node) => node.tag === 'dialog')[0];
-  assert.equal(dialog.open, true);
-  dialog.events.pointerdown({ target: dialog, clientX: 120, clientY: 120 });
-  dialog.events.click({ target: dialog, clientX: 120, clientY: 120 });
-  assert.equal(dialog.open, true, 'Inside clicks keep the modal open');
-  dialog.events.pointerdown({ target: dialog, clientX: 20, clientY: 20 });
-  dialog.events.click({ target: dialog, clientX: 20, clientY: 20 });
-  assert.equal(dialog.open, false, 'Backdrop clicks close the modal');
-  edit();
-  const form = findAll(
-    dialog,
-    (node) => node.tag === 'form' && node.className === 'activity-editor'
-  )[0];
-  const inputs = findAll(form, (node) => node.tag === 'input');
-  assert.equal(inputs[0].value, 'WS 1');
-  inputs[0].value = 'Written Work 1';
-  inputs[1].value = '50';
-  await form.events.submit({ preventDefault() {} });
-  assert.equal(method, 'PUT');
-  assert.equal(dialog.open, false);
-  assert.match(root.textContent, /Written Work 1/);
-  edit();
-  await findAll(
-    dialog,
-    (node) => node.tag === 'button' && node.textContent === 'Delete column'
-  )[0].events.click();
-  assert.equal(method, 'DELETE');
-  assert.equal(dialog.open, false);
-  assert.equal(
-    findAll(root, (node) => node.tag === 'button' && node.className?.includes('activity-edit'))
-      .length,
-    0
-  );
+  assert.equal(findAll(root, (node) => node.className?.includes('activity-delete')).length, 0);
+  findAll(root, (node) => node.textContent === 'Manage columns')[0].events.click();
+  const manager = findAll(root, (node) => node.className === 'activity-manager')[0];
+  const category = byId(root, 'activity-manager-category');
+  category.value = 'writtenOral';
+  category.events.change();
+  const inputs = findAll(manager, (node) => node.tag === 'input');
+  inputs[2].value = 'Keep this draft';
+  inputs[2].events.input();
+  const remove = findAll(manager, (node) => node.className?.includes('activity-delete'))[0];
+  await remove.events.click();
+  assert.match(manager.textContent, /Could not delete column: Offline/);
+  assert.equal(findAll(manager, (node) => node.className === 'activity-manager-row').length, 2);
+  assert.equal(remove.disabled, false);
+  fail = false;
+  await remove.events.click();
+  assert.equal(findAll(manager, (node) => node.className === 'activity-manager-row').length, 1);
+  assert.equal(inputs[2].value, 'Keep this draft');
+  assert.equal(findAll(root, (node) => node.className === 'activity-max activity-summary')[0].textContent, '100');
+  assert.equal(findAll(root, (node) => node.tag === 'dialog')[0].open, true);
+  assert.match(manager.textContent, /Column deleted/);
 });
 
 test('manager saves edited columns using the latest version and keeps toolbar controls ordered', async () => {
@@ -328,9 +350,35 @@ test('manager saves edited columns using the latest version and keeps toolbar co
   assert.equal(actions.children[1].tag, 'label');
   actions.children[0].events.click();
   const manager = findAll(root, (node) => node.className === 'activity-manager')[0];
+  const categorySelect = byId(manager, 'activity-manager-category');
+  assert.deepEqual(categorySelect.children.map((option) => option.textContent), [
+    'Choose an activity category', 'Written / Oral Works', 'Product / Performance Tasks', 'Examinations'
+  ]);
+  const groups = findAll(manager, (node) => node.className === 'activity-manager-group');
+  assert.equal(categorySelect.value, '');
+  assert.deepEqual(groups.map((group) => group.hidden), [true, true, true]);
+  const commit = findAll(manager, (node) => node.tag === 'button' && node.textContent === 'Save changes')[0];
+  assert.equal(commit.hidden, true);
+  await manager.onsubmit({ preventDefault() {} });
+  assert.equal(saves, 0);
+  categorySelect.value = 'writtenOral';
+  categorySelect.events.change();
+  assert.equal(commit.hidden, false);
+  assert.deepEqual(groups.map((group) => group.hidden), [false, true, true]);
   const inputs = findAll(manager, (node) => node.tag === 'input');
   inputs[0].value = 'Written work revised';
+  categorySelect.value = 'performanceTasks';
+  categorySelect.events.change();
+  assert.deepEqual(groups.map((group) => group.hidden), [true, false, true]);
+  assert.match(groups[1].textContent, /No columns yet/);
+  categorySelect.value = 'examination';
+  categorySelect.events.change();
+  assert.deepEqual(groups.map((group) => group.hidden), [true, true, false]);
   inputs[3].value = '50';
+  categorySelect.value = 'writtenOral';
+  categorySelect.events.change();
+  assert.equal(inputs[0].value, 'Written work revised', 'Switching categories preserves unsaved edits');
+  assert.equal(inputs[3].value, '50');
   await manager.onsubmit({ preventDefault() {} });
   assert.equal(saves, 2);
   assert.equal(data.activities[0].title, 'Written work revised');
@@ -380,6 +428,60 @@ test('score inputs block values over maximum, save valid scores and reload them'
   await open();
   input = findAll(root, (node) => node.className === 'activity-score-input')[0];
   assert.equal(input.value, '50');
+});
+
+test('category totals and PS are read-only, term-specific and update with score drafts and activities', async () => {
+  const activities = [50, 50, 100, 100].map((maxScore, index) => ({
+    _id: 'w' + index, term: 1, category: 'writtenOral', title: 'Work ' + index, maxScore
+  }));
+  activities.push(
+    { _id: 'p', term: 1, category: 'performanceTasks', title: 'Task', maxScore: 80 },
+    { _id: 'other', term: 2, category: 'writtenOral', title: 'Other term', maxScore: 200 }
+  );
+  const data = {
+    activities, totalStudents: 1, gradeVersion: 0,
+    roster: [{ studentId: 's', firstName: 'Ana', lastName: 'Santos', activityScores: { w0: 25, w1: 25, w2: 50, w3: 50, p: 60 } }]
+  };
+  const { root, browser } = fixture(async (url, options) => {
+    if (options?.method === 'POST') {
+      data.activities.push({ ...JSON.parse(options.body), _id: 'new' });
+      return { activities: data.activities, gradeVersion: 1 };
+    }
+    return data;
+  });
+  await browser.show();
+  findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
+  await flush();
+  const maxima = () => findAll(root, (node) => node.className === 'activity-max activity-summary').map((node) => node.textContent);
+  const summaries = () => findAll(root, (node) => node.className === 'activity-summary-value').map((node) => node.textContent);
+  assert.deepEqual(maxima(), ['300', '100', '20%', '80', '100', '60%']);
+  assert.deepEqual(summaries(), ['150', '50', '10', '60', '75', '45']);
+  assert.equal(findAll(root, (node) => node.className === 'activity-score-input').length, 5);
+  const input = findAll(root, (node) => node.className === 'activity-score-input')[0];
+  input.value = '50';
+  input.events.input();
+  assert.deepEqual(summaries().slice(0, 3), ['175', '58.33', '11.67']);
+  input.value = '51';
+  input.events.input();
+  assert.deepEqual(summaries().slice(0, 3), ['—', '—', '—']);
+  input.value = '0';
+  input.events.input();
+  assert.deepEqual(summaries().slice(0, 3), ['125', '41.67', '8.33']);
+  input.value = '';
+  input.events.input();
+  assert.deepEqual(summaries().slice(0, 3), ['—', '—', '—']);
+  findAll(root, (node) => node.tag === 'button' && node.textContent === '+ Add column')[0].events.click();
+  const form = findAll(root, (node) => node.className === 'activity-editor')[0];
+  const inputs = findAll(form, (node) => node.tag === 'input');
+  inputs[0].value = 'Extra work';
+  inputs[1].value = '50';
+  await form.events.submit({ preventDefault() {} });
+  assert.deepEqual(maxima(), ['350', '100', '20%', '80', '100', '60%']);
+  const select = byId(root, 'class-term-select');
+  select.value = '2';
+  select.events.change();
+  assert.deepEqual(maxima(), ['200', '100', '20%', '0', '100', '60%']);
+  assert.deepEqual(summaries(), ['—', '—', '—', '—', '—', '—']);
 });
 
 test('activity creation requires both a nonblank name and maximum points', async () => {

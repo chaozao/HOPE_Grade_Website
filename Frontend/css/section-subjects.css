@@ -32,6 +32,25 @@
 .section-subject-dialog [data-status]:empty {
   display: none;
 }
+.section-subject-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-subject-status [data-status] {
+  margin: 0;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.section-subject-status:has([data-status]:not(:empty)) {
+  margin-bottom: 16px;
+}
+.section-subject-status [data-retry] {
+  flex-shrink: 0;
+}
+.section-subject-status [data-retry] svg {
+  display: block;
+}
 .section-subject-dialog .is-error {
   color: #943d2d;
 }
@@ -79,7 +98,6 @@
   font: inherit;
 }
 .section-subject-dialog button {
-  padding: 9px 12px;
   border: 1px solid #d9d4c8;
   border-radius: 6px;
   background: #fff;
@@ -90,6 +108,28 @@
 .section-subject-dialog button:disabled {
   opacity: 0.5;
   cursor: wait;
+}
+.section-subject-dialog [data-close] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #68746d;
+  font: 28px/1 Arial, sans-serif;
+}
+.section-subject-dialog [data-close]:hover {
+  background: #f1eee7;
+  color: #1a231f;
+}
+.section-subject-dialog [data-close]:focus-visible {
+  outline: 2px solid #294b3f;
+  outline-offset: 2px;
 }
 .section-subject-dialog [data-save] {
   background: #294b3f;

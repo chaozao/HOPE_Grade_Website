@@ -53,11 +53,19 @@ function validateAssignment(teacherId, body) {
   return { advisoryClassId, subjectIds };
 }
 
-async function assignTeacherRoles(teacherId, body) {
+async function assignTeacherRoles(teacherId, body, actor) {
   const { advisoryClassId, subjectIds } = validateAssignment(teacherId, body);
   // Atlas transactions keep user roles and class/subject links in sync on failure.
   await mongoose.connection.transaction(async (session) => {
-    await requireTeacher(teacherId, session);
+    const teacher = await requireTeacher(teacherId, session);
+    const history = require('./admin-history');
+    const previous = [];
+    if (actor) {
+      const classes = await Class.find({ $or: [{ adviser: teacherId }, { _id: advisoryClassId }] }).session(session);
+      const assigned = await Subject.find({ $or: [{ teacher: teacherId }, { _id: { $in: subjectIds } }] }).session(session);
+      for (const doc of classes) previous.push({ model: 'Class', id: doc._id, before: history.snapshot('Class', doc) });
+      for (const doc of assigned) previous.push({ model: 'Subject', id: doc._id, before: history.snapshot('Subject', doc) });
+    }
     if (advisoryClassId) {
       const homeroom = await Class.findById(advisoryClassId).session(session);
       if (!homeroom) invalid('Homeroom not found. Reload the assignments.', 404);
@@ -95,6 +103,14 @@ async function assignTeacherRoles(teacherId, body) {
         { session }
       );
     await syncTeacherRoles(teacherId, session);
+    if (actor) {
+      const changes = [];
+      for (const item of previous) {
+        const doc = await (item.model === 'Class' ? Class : Subject).findById(item.id).session(session);
+        changes.push(history.change(item.model, doc, item.before));
+      }
+      await history.record(actor, 'Modified roles and assignments for ' + teacher.username, changes, session);
+    }
   });
 }
 

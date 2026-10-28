@@ -397,6 +397,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const clearInput = document.getElementById('clear-data-confirmation');
   const clearSubmit = document.getElementById('confirm-clear-data');
   const clearCancel = document.getElementById('cancel-clear-data');
+  const clearClose = document.getElementById('close-clear-data');
   let clearSelection = null,
     clearing = false;
   function appendClearAction(row, kind, id, label) {
@@ -437,6 +438,23 @@ document.addEventListener('DOMContentLoaded', function () {
   clearCancel.addEventListener('click', () => {
     if (!clearing) clearDialog.close();
   });
+  clearClose.addEventListener('click', () => {
+    if (!clearing) clearDialog.close();
+  });
+  let clearStartedOutside = false;
+  function outsideClearDialog(event) {
+    const rect = clearDialog.getBoundingClientRect();
+    return event.target === clearDialog &&
+      (event.clientX < rect.left || event.clientX > rect.right ||
+       event.clientY < rect.top || event.clientY > rect.bottom);
+  }
+  clearDialog.addEventListener('pointerdown', (event) => {
+    clearStartedOutside = outsideClearDialog(event);
+  });
+  clearDialog.addEventListener('click', (event) => {
+    if (clearStartedOutside && outsideClearDialog(event) && !clearing) clearDialog.close();
+    clearStartedOutside = false;
+  });
   clearDialog.addEventListener('cancel', (event) => {
     if (clearing) event.preventDefault();
   });
@@ -444,7 +462,7 @@ document.addEventListener('DOMContentLoaded', function () {
     event.preventDefault();
     if (clearing || !clearSelection || clearInput.value !== 'CLEAR') return;
     clearing = true;
-    clearSubmit.disabled = clearCancel.disabled = clearInput.disabled = true;
+    clearSubmit.disabled = clearCancel.disabled = clearClose.disabled = clearInput.disabled = true;
     clearSubmit.textContent = 'Clearing…';
     const errorBox = document.getElementById('clear-data-error');
     errorBox.hidden = true;
@@ -474,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function () {
     } finally {
       clearing = false;
       clearSubmit.disabled = clearInput.value !== 'CLEAR';
-      clearCancel.disabled = clearInput.disabled = false;
+      clearCancel.disabled = clearClose.disabled = clearInput.disabled = false;
       clearSubmit.textContent = 'Clear Data Permanently';
     }
   });
@@ -482,6 +500,9 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('section-subjects-saved', () => {
     loadSubjects().catch((error) => showTableError(error.message));
     loadTeachers().catch((error) => showTableError(error.message));
+  });
+  document.addEventListener('admin-history-undone', () => {
+    reloadTables().catch(error => showTableError(error.message));
   });
 
   // ---------- MODALS ----------

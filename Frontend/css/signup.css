@@ -65,6 +65,20 @@ body {
   color: #e9e4d8;
 }
 
+/* School logo: adjust these widths to resize the sign-up logo. */
+.auth-logo.school-logo {
+  --logo-width: 220px;
+  --logo-mobile-width: 160px;
+  width: var(--logo-width);
+  max-width: 100%;
+}
+
+@media (max-width: 820px) {
+  .auth-logo.school-logo {
+    width: var(--logo-mobile-width);
+  }
+}
+
 /* Form panel (right) */
 .auth-form-panel {
   display: flex;

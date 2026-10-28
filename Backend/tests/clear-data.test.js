@@ -22,6 +22,7 @@ test('clear data validates permission and confirmation before starting any delet
 });
 
 test('subject and class clearing preserve unrelated data and synchronize assignments', async (t) => {
+  t.mock.method(require('../services/admin-history'), 'record', async () => {});
   let state = {
     User: [
       { _id: id(1), role: 'admin', isActive: true },
@@ -60,6 +61,7 @@ test('subject and class clearing preserve unrelated data and synchronize assignm
     }
   });
   for (const [name, model] of Object.entries(models)) {
+    t.mock.method(model, 'findById', (id) => query(state[name].find(doc => doc._id === id)));
     t.mock.method(model, 'find', (filter) =>
       query(state[name].filter((doc) => matches(doc, filter)))
     );

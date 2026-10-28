@@ -61,6 +61,7 @@ test(
     let roleSaveCount = 0;
     let releaseSubjectResponse;
     let releaseHomeroomResponse;
+    let historyUndone = false;
     const academicFixture = require('./academic-fixtures.cjs')();
     const tokenFor = (role, isAdviser) =>
       'test.' +
@@ -104,6 +105,15 @@ test(
       }
       if (url.pathname.startsWith('/api/')) {
         const route = url.pathname.slice(4);
+        if (route === '/admin/history') return json({ next: null, entries: [
+          { _id: 'own', name: 'Test Admin', action: 'Added Science in Grade 10 - Diamond', date: '2026-10-23T01:24:56.000Z', reversible: true, canUndo: !historyUndone, undoneAt: historyUndone ? '2026-10-23T02:00:00.000Z' : null },
+          { _id: 'other', name: '<img src=x>', action: 'Modified Math', date: '2026-10-23T01:24:56.000Z', reversible: true, canUndo: false },
+          { _id: 'clear', name: 'Test Admin', action: 'Cleared Grade 11 - Ruby', date: '2026-10-23T01:24:56.000Z', reversible: false, canUndo: false }
+        ] });
+        if (route === '/admin/history/own/undo' && req.method === 'POST') {
+          historyUndone = true;
+          return json({ message: 'Change undone.' });
+        }
         if (mode === 'academic-workflow' && academicFixture(req, url, json)) return;
         if (route === '/admin/teachers' && mode === 'admin-teachers-error')
           return json({ error: 'Teacher lookup failed' }, 500);
@@ -368,6 +378,37 @@ test(
     };
     await navigate('index.html');
     await evaluate('sessionStorage.setItem("token", ' + JSON.stringify(tokenFor('teacher')) + ')');
+    await t.test('one global history button shows actor, Manila time and owner-only undo', async () => {
+      mode = 'admin';
+      await evaluate('saveToken(' + JSON.stringify(tokenFor('admin')) + ', false)');
+      await navigate('admin-dashboard.html');
+      assert.equal(await evaluate('document.querySelectorAll("#open-admin-history").length'), 1);
+      await evaluate('document.getElementById("open-admin-history").click()');
+      await waitFor('document.querySelectorAll("#admin-history-dialog tbody tr").length === 3');
+      assert.deepEqual(await evaluate('Array.from(document.querySelectorAll("#admin-history-dialog th"), cell => cell.textContent)'), ['Name', 'Action', 'Date / time']);
+      assert.equal(await evaluate('document.querySelectorAll("#admin-history-dialog tbody tr:first-child td").length'), 3);
+      assert.equal(await evaluate('document.querySelectorAll(".admin-history-undo").length'), 1);
+      assert.equal(await evaluate('document.querySelector(".admin-history-undo").closest("td").cellIndex'), 2);
+      assert.equal(await evaluate('document.querySelectorAll("#admin-history-dialog tbody img").length'), 0);
+      assert.match(await evaluate('document.querySelector("#admin-history-dialog tbody").textContent'), /10\/23\/26 - 9:24:56AM/);
+      await evaluate('document.querySelector(".admin-history-undo").click()');
+      await waitFor('document.querySelector(".admin-history-status").textContent === "Change undone."');
+      assert.equal(await evaluate('document.querySelectorAll(".admin-history-undo").length'), 0);
+      assert.match(await evaluate('document.querySelector("#admin-history-dialog tbody").textContent'), /Undone/);
+      await command('Input.dispatchMouseEvent', { type: 'mousePressed', x: 1, y: 1, button: 'left', clickCount: 1 });
+      await command('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 1, y: 1, button: 'left', clickCount: 1 });
+      await waitFor('!document.getElementById("admin-history-dialog").open');
+      await evaluate('document.getElementById("open-admin-history").click()');
+      await waitFor('document.getElementById("admin-history-dialog").getAttribute("aria-busy") === "false"');
+      await evaluate('document.querySelector(".admin-history-close").click()');
+      assert.equal(await evaluate('document.getElementById("admin-history-dialog").open'), false);
+      mode = 'advisor';
+      await evaluate('saveToken(' + JSON.stringify(tokenFor('teacher')) + ', false)');
+    });
+    if (process.env.HOPE_HISTORY_ONLY === '1') {
+      assert.deepEqual(exceptions, [], 'No uncaught history browser exceptions');
+      return;
+    }
 
     await t.test('all roles keep their current page after normal and hard refresh', async () => {
       const refresh = async (ignoreCache, expected) => {

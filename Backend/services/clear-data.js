@@ -7,6 +7,7 @@ const Grade = require('../models/Grade');
 const Request = require('../models/GradeEditRequest');
 const Audit = require('../models/AcademicAudit');
 const { invalid, validateId, syncTeacherRoles } = require('./teacher-roles');
+const history = require('./admin-history');
 
 async function clearData(actor, kind, body) {
   if (actor.role !== 'admin') invalid('Only super admins can clear data.', 403);
@@ -16,7 +17,8 @@ async function clearData(actor, kind, body) {
   const ids = [...new Set(body.ids)];
   ids.forEach((id) => validateId(id, kind));
   return mongoose.connection.transaction(async (session) => {
-    if (!(await User.exists({ _id: actor.userId, role: 'admin', isActive: true }).session(session)))
+    const admin = await User.findById(actor.userId).session(session);
+    if (!admin || admin.role !== 'admin' || !admin.isActive)
       invalid('Your admin account is unavailable.', 403);
     const model = kind === 'classes' ? Class : Subject;
     const selected = await model.find({ _id: { $in: ids } }).session(session);
@@ -70,6 +72,9 @@ async function clearData(actor, kind, body) {
     );
     await Class.deleteMany({ _id: { $in: classIds } }, { session });
     for (const teacher of teachers) await syncTeacherRoles(teacher, session);
+    await history.record(actor, 'Cleared ' + kind + ': ' +
+      selected.map(item => item.name || String(item._id)).join(', ') +
+      ' — permanently deleted linked data', [], session, false);
     return {
       message: 'Data cleared from admin, adviser, and subject teacher records.',
       removed: {

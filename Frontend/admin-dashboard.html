@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="css/admin-dashboard.css" />
     <link rel="stylesheet" href="css/profile.css" />
     <link rel="stylesheet" href="css/section-subjects.css" />
+    <link rel="stylesheet" href="css/admin-history.css" />
   </head>
   <body>
     <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
@@ -47,6 +48,10 @@
           </button>
         </nav>
 
+        <button type="button" class="admin-history-trigger" id="open-admin-history" aria-haspopup="dialog">
+          <i class="bi bi-clock-history" aria-hidden="true"></i>
+          <span>History</span>
+        </button>
         <div class="sidebar-user">
           <button
             type="button"
@@ -296,6 +301,7 @@
       aria-labelledby="clear-data-title"
       aria-describedby="clear-data-description"
     >
+      <button type="button" id="close-clear-data" aria-label="Close Clear Data" title="Close"><span aria-hidden="true">&times;</span></button>
       <form id="clear-data-form">
         <span class="clear-data-icon" aria-hidden="true"><i class="bi bi-trash3"></i></span>
         <h2 id="clear-data-title">Clear data?</h2>
@@ -520,5 +526,6 @@
     <script src="js/section-subjects.js"></script>
     <script src="js/admin-dashboard.js"></script>
     <script src="js/admin-roles.js"></script>
+    <script src="js/admin-history.js"></script>
   </body>
 </html>

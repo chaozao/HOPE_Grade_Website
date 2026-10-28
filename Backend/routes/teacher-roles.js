@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.put('/:id/roles', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    await assignTeacherRoles(req.params.id, req.body);
+    await assignTeacherRoles(req.params.id, req.body, req.user);
     res.json({ message: 'Roles and assignments saved successfully.' });
   } catch (error) {
     res.status(error.status || 500).json({

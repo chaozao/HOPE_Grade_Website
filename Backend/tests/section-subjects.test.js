@@ -9,6 +9,7 @@ const ids = Array.from({ length: 6 }, (_, i) => String(i + 1).repeat(24));
 const [admin, adviser, teacher, otherAdviser, sectionId, otherSection] = ids;
 
 test('section assignment permissions, validation and teacher role synchronization', async (t) => {
+  t.mock.method(require('../services/admin-history'), 'record', async () => {});
   const state = {
     users: [admin, adviser, teacher, otherAdviser].map((id) => ({
       _id: id,
@@ -35,9 +36,11 @@ test('section assignment permissions, validation and teacher role synchronizatio
     [Class, 'classes'],
     [Subject, 'subjects']
   ]) {
-    t.mock.method(model, 'findOne', (filter) =>
-      query(state[key].find((doc) => matches(doc, filter)))
-    );
+    t.mock.method(model, 'findOne', (filter) => {
+      const doc = state[key].find((doc) => matches(doc, filter));
+      // Match Mongoose hydration, including defaults for legacy documents.
+      return query(model === User && doc ? User.hydrate(doc) : doc);
+    });
     t.mock.method(model, 'findById', (id) =>
       query(state[key].find((doc) => String(doc._id) === String(id)))
     );
@@ -59,6 +62,13 @@ test('section assignment permissions, validation and teacher role synchronizatio
   });
   const actor = (id) => ({ userId: id, role: id === admin ? 'admin' : 'teacher' });
   const body = { name: 'Science', teacherId: teacher };
+  const adminRecord = state.users.find((user) => user._id === admin);
+  delete adminRecord.isActive;
+  assert.equal((await service.section(actor(admin), otherSection))._id, otherSection);
+  adminRecord.isActive = false;
+  await assert.rejects(service.section(actor(admin), sectionId), { status: 403 });
+  adminRecord.isActive = true;
+  await assert.rejects(service.section({ userId: '999999999999999999999999', role: 'admin' }, sectionId), { status: 403 });
   await assert.rejects(service.save(actor(teacher), sectionId, null, body), { status: 403 });
   await assert.rejects(service.save(actor(adviser), otherSection, null, body), { status: 403 });
   await assert.rejects(service.save({ userId: adviser, role: 'admin' }, sectionId, null, body), {

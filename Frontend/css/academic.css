@@ -411,6 +411,17 @@
 #class-browser .activity-dialog::backdrop {
   background: rgba(0, 0, 0, 0.35);
 }
+/* Manage columns size: change 560px to adjust the maximum modal height. */
+#class-browser .activity-dialog.managing-columns {
+  --manage-columns-height: 560px;
+  max-height: min(var(--manage-columns-height), 75dvh);
+  min-height: min(200px, 75dvh);
+  resize: vertical;
+}
+#class-browser .activity-undo:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 #class-browser .activity-dialog .activity-editor {
   display: grid;
   align-items: stretch;
@@ -451,6 +462,18 @@
   display: grid;
   gap: 8px;
 }
+#class-browser .activity-manager-category {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+#class-browser .activity-manager-category select {
+  width: 100%;
+}
+#class-browser .activity-manager-group[hidden] {
+  display: none;
+}
 #class-browser .activity-manager-row {
   display: flex;
   align-items: center;
@@ -470,6 +493,10 @@
 }
 #class-browser .activity-manager-row .filter-btn {
   flex: 0 0 auto;
+}
+#class-browser .activity-manager-row-actions {
+  display: grid;
+  gap: 8px;
 }
 #class-browser .activity-number {
   vertical-align: middle;
@@ -560,6 +587,16 @@
 #class-browser .activity-score-input:focus {
   outline: 2px solid #397ab8;
   outline-offset: 1px;
+}
+#class-browser .activity-summary {
+  min-width: 72px;
+  font-weight: 600;
+}
+#class-browser .activity-summary-value {
+  display: inline-block;
+  min-width: 48px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 #class-browser input.state-error {
   border: 2px solid #b42318;

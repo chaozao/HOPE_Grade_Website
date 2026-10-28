@@ -33,6 +33,7 @@ test('role validation requires matching assignments and rejects privilege escala
 });
 
 test('assignment routes authorize admins and persist or roll back all assignment changes', async (t) => {
+  t.mock.method(require('../services/admin-history'), 'record', async () => {});
   let state;
   let failUserWrite = false;
   const reset = () => {
@@ -52,6 +53,7 @@ test('assignment routes authorize admins and persist or roll back all assignment
   reset();
   const matches = (doc, filter) =>
     Object.entries(filter).every(([key, value]) => {
+      if (key === '$or') return value.some(part => matches(doc, part));
       if (value && typeof value === 'object') {
         if ('$in' in value) return value.$in.includes(doc[key]);
         if ('$nin' in value) return !value.$nin.includes(doc[key]);

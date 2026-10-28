@@ -560,6 +560,35 @@
 .clear-data-dialog::backdrop {
   background: #17121088;
 }
+#close-clear-data {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #68746d;
+  font: 28px/1 Arial, sans-serif;
+  cursor: pointer;
+}
+#close-clear-data:hover:not(:disabled) {
+  background: #f1eee7;
+  color: #1a231f;
+}
+#close-clear-data:focus-visible {
+  outline: 2px solid #294b3f;
+  outline-offset: 2px;
+}
+#close-clear-data:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
 .clear-data-dialog h2 {
   margin: 16px 0 10px;
 }

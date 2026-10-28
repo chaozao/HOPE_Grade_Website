@@ -15,6 +15,7 @@ const Class = require('./models/Class');
 const Subject = require('./models/Subject');
 const Student = require('./models/Student');
 const Grade = require('./models/Grade');
+const adminHistory = require('./services/admin-history');
 const {
   syncTeacherRoles,
   requireTeacher,
@@ -451,7 +452,11 @@ app.post('/admin/teachers', verifyToken, requireRole('admin'), async (req, res) 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newTeacher = new User({ username, email, password: hashedPassword, role: 'teacher' });
-    await newTeacher.save();
+    await mongoose.connection.transaction(async session => {
+      await newTeacher.save({ session });
+      await adminHistory.record(req.user, 'Added teacher ' + username,
+        [adminHistory.change('User', newTeacher)], session);
+    });
 
     res.json({ message: `Teacher account created for ${username}.` });
   } catch (error) {
@@ -461,6 +466,7 @@ app.post('/admin/teachers', verifyToken, requireRole('admin'), async (req, res) 
 
 app.use('/admin/teachers', require('./routes/teacher-roles'));
 app.use('/admin/clear-data', require('./routes/clear-data'));
+app.use('/admin/history', require('./routes/admin-history'));
 
 // Toggle a teacher's active/deactivated status
 app.patch('/admin/teachers/:id/deactivate', verifyToken, requireRole('admin'), async (req, res) => {
@@ -470,14 +476,17 @@ app.patch('/admin/teachers/:id/deactivate', verifyToken, requireRole('admin'), a
     if (req.body.isActive !== undefined && typeof req.body.isActive !== 'boolean') {
       return res.status(400).json({ error: 'Account status must be true or false.' });
     }
-    const teacher = await User.findOne({ _id: req.params.id, role: 'teacher' });
-
-    if (!teacher) {
-      return res.status(404).json({ error: 'Teacher not found.' });
-    }
-
-    teacher.isActive = req.body.isActive === undefined ? !teacher.isActive : req.body.isActive;
-    await teacher.save();
+    let teacher;
+    await mongoose.connection.transaction(async session => {
+      teacher = await User.findOne({ _id: req.params.id, role: 'teacher' }).session(session);
+      if (!teacher) invalid('Teacher not found.', 404);
+      const before = adminHistory.snapshot('User', teacher);
+      teacher.isActive = req.body.isActive === undefined ? !teacher.isActive : req.body.isActive;
+      await teacher.save({ session });
+      await adminHistory.record(req.user,
+        (teacher.isActive ? 'Activated teacher ' : 'Deactivated teacher ') + teacher.username,
+        [adminHistory.change('User', teacher, before)], session);
+    });
 
     res.json({
       message: `${teacher.username} is now ${teacher.isActive ? 'active' : 'deactivated'}.`
@@ -506,6 +515,8 @@ app.post('/admin/classes', verifyToken, requireRole('admin'), async (req, res) =
       });
       await newClass.save({ session });
       await syncTeacherRoles(adviserId, session);
+      await adminHistory.record(req.user, 'Added class ' + name,
+        [adminHistory.change('Class', newClass)], session);
     });
 
     res.json({ message: `Class "${name}" created.`, class: newClass });
