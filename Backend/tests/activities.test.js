@@ -113,6 +113,26 @@ test('activity editing and deletion persist with version and ownership checks', 
   assert.deepEqual(actions, ['activity-updated', 'activity-deleted']);
 });
 
+test('exam percentages validate and persist on creation and edits', async (t) => {
+  const { changeActivity } = require('../services/academic');
+  const actor = { role: 'teacher', userId: 'teacher1' }, id = '123456789012345678901234';
+  const subject = new Subject({ name: 'Science', class: id });
+  const record = { _id: id, teacher: actor.userId, activities: subject.activities, gradeStatus: 'draft', gradeVersion: 0, save: async () => {} };
+  t.mock.method(mongoose.connection, 'transaction', async (callback) => callback(null));
+  t.mock.method(User, 'findOne', () => ({ session: async () => ({}) }));
+  t.mock.method(Subject, 'findById', () => ({ session: async () => record }));
+  t.mock.method(Audit, 'create', async () => {});
+  const input = { term: 1, category: 'examination', title: 'ST1', maxScore: 50, version: 0 };
+  for (const wsPercentage of [undefined, null, '', '30', 0, -1, 101, NaN, Infinity])
+    await assert.rejects(addActivity(actor, id, { ...input, wsPercentage }), { status: 400 });
+  await addActivity(actor, id, { ...input, wsPercentage: 30 });
+  assert.equal(record.activities[0].toObject().wsPercentage, 30);
+  const activityId = String(record.activities[0]._id);
+  await changeActivity(actor, id, activityId, { title: 'ST1', maxScore: 50, version: 1, wsPercentage: 25.5 });
+  assert.equal(record.activities[0].wsPercentage, 25.5);
+  await assert.rejects(changeActivity(actor, id, activityId, { title: 'ST1', maxScore: 50, version: 2, wsPercentage: 101 }), { status: 400 });
+});
+
 test('activity scores reject maximum bypasses and isolate enrolled students and terms', () => {
   const P = require('../services/academic-policy');
   const studentId = '111111111111111111111111',

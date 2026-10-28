@@ -11,7 +11,8 @@ const subjectSchema = new mongoose.Schema(
           required: true
         },
         title: { type: String, required: true, maxlength: 100 },
-        maxScore: { type: Number, required: true, min: 1, max: 10000 }
+        maxScore: { type: Number, required: true, min: 1, max: 10000 },
+        wsPercentage: { type: Number, min: 0, max: 100 }
       }
     ],
     gradeStatus: { type: String, enum: ['draft', 'finalized'], default: 'draft' },

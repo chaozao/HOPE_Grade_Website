@@ -16,7 +16,7 @@ window.ClassBrowser = (function () {
   ];
   // WS WEIGHTS: Written / Oral Works = 20%, Product / Performance Tasks = 60%.
   // Keep these numeric for calculations; the table header adds the % sign below.
-  const categoryWeights = { writtenOral: 20, performanceTasks: 60 };
+  const categoryWeights = { writtenOral: 20, performanceTasks: 60, examination: 20 };
   const finalColumns = [
     'Learners Name',
     '1st Term',
@@ -95,7 +95,7 @@ window.ClassBrowser = (function () {
           }
           const group = groups[index - 2];
           cell.scope = 'colgroup';
-          cell.colSpan = Math.max(1, group.activities.length) + (group.summary ? 3 : 0);
+          cell.colSpan = Math.max(1, group.activities.length) + (group.examination ? group.activities.length + 2 : 3);
           cell.className = 'activity-group-heading';
           const add = UI.button('+ Add column', group.add);
           add.disabled = group.locked;
@@ -107,12 +107,12 @@ window.ClassBrowser = (function () {
           items.forEach((activity, number) => {
             const numbered = UI.node(
               'th',
-              activity ? String(number + 1) : '\u2014',
+              activity ? (group.examination ? activity.title : String(number + 1)) : '\u2014',
               'activity-number'
             );
             numbered.scope = 'col';
             numbered.title = activity?.title || 'No activities yet';
-            if (activity) {
+            if (activity && !group.examination) {
               numbered.appendChild(UI.node('span', activity.title, 'activity-title'));
             }
             numbers.appendChild(numbered);
@@ -126,16 +126,24 @@ window.ClassBrowser = (function () {
             max.title = 'Maximum points';
             maxima.appendChild(max);
           });
+          if (group.examination) {
+            group.activities.forEach((activity) => {
+              const weighted = UI.node('th', 'WS ' + activity.title, 'activity-weighted-header');
+              weighted.scope = 'col';
+              numbers.appendChild(weighted);
+              maxima.appendChild(UI.node('th', activity.wsPercentage ?? '\u2014', 'activity-max activity-weighted-header'));
+            });
+          }
           if (group.summary) {
-            ['Total', 'PS', 'WS'].forEach((label, index) => {
+            (group.examination ? ['PS', 'WS'] : ['Total', 'PS', 'WS']).forEach((label, index) => {
               const heading = UI.node('th', label, 'activity-number activity-summary');
               heading.scope = 'col';
-              heading.title = ['Total points', 'Percentage Score', 'Weighted Score'][index];
+              heading.title = ({ Total: 'Total points', PS: 'Percentage Score', WS: 'Weighted Score' })[label];
               numbers.appendChild(heading);
               // SUMMARY MAXIMUM HEADERS: Total = sum of activity limits, PS = 100,
               // WS = the configured percentage, displayed as "20%" or "60%".
               const weightedScoreMaximum = group.weight === null ? '\u2014' : group.weight + '%';
-              const value = [group.maximum, 100, weightedScoreMaximum][index];
+              const value = ({ Total: group.maximum, PS: 100, WS: weightedScoreMaximum })[label];
               maxima.appendChild(UI.node('th', String(value), 'activity-max activity-summary'));
             });
           }
@@ -266,6 +274,12 @@ window.ClassBrowser = (function () {
         required: true
       });
       maxLabel.appendChild(maxInput);
+      const wsLabel = UI.node('label', 'WS Percentage'), wsInput = UI.node('input');
+      Object.assign(wsInput, { type: 'number', min: '0.01', max: '100', step: '0.01' });
+      wsInput.id = 'activity-ws-percentage';
+      wsLabel.appendChild(wsInput);
+      wsLabel.hidden = true;
+      wsInput.disabled = true;
       const save = UI.node('button', 'Add activity', 'filter-btn');
       save.type = 'submit';
       const cancel = UI.button('Cancel', () => {
@@ -279,7 +293,7 @@ window.ClassBrowser = (function () {
         actions = UI.node('div', undefined, 'activity-editor-actions');
       actions.append(cancel, save);
       footer.append(actions);
-      editor.append(editorTitle, titleLabel, maxLabel, editorStatus, footer);
+      editor.append(editorTitle, titleLabel, maxLabel, wsLabel, editorStatus, footer);
       let editingCategory = '',
         editingActivity = null,
         saving = false;
@@ -318,7 +332,7 @@ window.ClassBrowser = (function () {
           UI.node(
             'p',
             select.selectedOptions[0].textContent +
-              ' activities. Update names and maximum points, then save your changes.',
+              ' activities. Changes and deletions apply only when you save. Use Undo or Cancel to discard them.',
             'content-subtitle'
           )
         );
@@ -381,64 +395,57 @@ window.ClassBrowser = (function () {
             });
             pointsLabel.appendChild(pointsInput);
             info.append(nameLabel, pointsLabel);
-            drafts.push({ id: activity._id, category: key, nameInput, pointsInput });
+            let weightInput;
+            if (key === 'examination') {
+              const weightLabel = UI.node('label', 'WS Percentage');
+              weightInput = UI.node('input');
+              Object.assign(weightInput, {
+                type: 'number', min: '0.01', max: '100', step: '0.01', required: true,
+                value: activity.wsPercentage === undefined ? '' : String(activity.wsPercentage), disabled: locked
+              });
+              weightLabel.appendChild(weightInput);
+              info.appendChild(weightLabel);
+              controls.push(weightInput);
+            }
+            const draft = { id: activity._id, category: key, nameInput, pointsInput, weightInput, deleted: false };
+            drafts.push(draft);
             controls.push(nameInput, pointsInput);
             const undo = UI.button('Undo', () => {
               if (saving || locked || undo.disabled) return;
               const current = data.activities.find((item) => item._id === activity._id);
+              draft.deleted = false;
               nameInput.value = current.title;
               pointsInput.value = String(current.maxScore);
+              if (weightInput) weightInput.value = current.wsPercentage === undefined ? '' : String(current.wsPercentage);
               changed();
             });
             undo.className += ' activity-undo';
             undo.setAttribute('aria-label', 'Undo changes to ' + activity.title);
             function changed() {
               const current = data.activities.find((item) => item._id === activity._id);
+              row.hidden = !current;
+              nameInput.disabled = pointsInput.disabled = saving || locked || draft.deleted || !current;
+              if (weightInput) weightInput.disabled = nameInput.disabled;
+              deleteColumn.disabled = saving || locked || draft.deleted || !current;
+              deleteColumn.textContent = draft.deleted ? 'Pending deletion' : 'Delete';
               undo.disabled = saving || locked || !current ||
-                (nameInput.value === current.title && pointsInput.value === String(current.maxScore));
+                (!draft.deleted && nameInput.value === current.title && pointsInput.value === String(current.maxScore) &&
+                  (!weightInput || weightInput.value === (current.wsPercentage === undefined ? '' : String(current.wsPercentage))));
             }
             refreshUndo.push(changed);
-            changed();
             nameInput.addEventListener('input', changed);
             pointsInput.addEventListener('input', changed);
+            weightInput?.addEventListener('input', changed);
             undo.title = 'Restore this row to its saved name and maximum points';
-            const deleteColumn = UI.button('Delete', async () => {
-              if (saving || locked) return;
-              saving = true;
-              controls.forEach((control) => { control.disabled = true; });
-              managerStatus.textContent = 'Deleting column...';
-              try {
-                const result = await UI.api(
-                  '/teacher/subjects/' + encodeURIComponent(subject._id) +
-                    '/activities/' + encodeURIComponent(activity._id),
-                  { method: 'DELETE', body: JSON.stringify({ version: data.gradeVersion || 0 }) }
-                );
-                if (request !== version) return;
-                data.activities = result.activities;
-                data.gradeVersion = result.gradeVersion;
-                for (const draftKey of scoreDrafts.keys()) {
-                  if (draftKey.startsWith(subject._id + ':') && draftKey.endsWith(':' + activity._id))
-                    scoreDrafts.delete(draftKey);
-                }
-                drafts.splice(drafts.findIndex((draft) => draft.id === activity._id), 1);
-                row.remove();
-                if (!drafts.some((draft) => draft.category === key))
-                  section.appendChild(UI.node('p', 'No columns yet.', 'content-subtitle'));
-                render();
-                managerStatus.textContent = 'Column deleted.';
-              } catch (error) {
-                if (request === version) managerStatus.textContent = 'Could not delete column: ' + error.message;
-              } finally {
-                saving = false;
-                controls.forEach((control) => { control.disabled = locked; });
-                commit.disabled = locked || !drafts.length;
-                refreshUndo.forEach((refresh) => refresh());
-                refreshScoreControls();
-              }
+            const deleteColumn = UI.button('Delete', () => {
+              if (saving || locked || draft.deleted) return;
+              draft.deleted = true;
+              changed();
             });
             deleteColumn.className += ' activity-delete';
             deleteColumn.disabled = locked;
             deleteColumn.setAttribute('aria-label', 'Delete ' + activity.title);
+            changed();
             controls.push(undo, deleteColumn);
             const rowActions = UI.node('div', undefined, 'activity-manager-row-actions');
             rowActions.append(undo, deleteColumn);
@@ -463,26 +470,29 @@ window.ClassBrowser = (function () {
         manager.onsubmit = async (event) => {
           event.preventDefault();
           if (saving || locked || !categorySelect.value) return;
-          const invalid = drafts.find((draft) =>
+          const invalid = drafts.find((draft) => !draft.deleted && (
             !draft.nameInput.value.trim() ||
             draft.nameInput.checkValidity?.() === false ||
-            draft.pointsInput.checkValidity?.() === false
-          );
+            draft.pointsInput.checkValidity?.() === false ||
+            draft.weightInput?.checkValidity?.() === false
+          ));
           if (invalid) showCategory(invalid.category);
           if (!manager.reportValidity()) return;
           const changes = drafts
             .map((draft) => ({
               id: draft.id,
+              deleted: draft.deleted,
               title: draft.nameInput.value.trim(),
-              maxScore: Number(draft.pointsInput.value)
+              maxScore: Number(draft.pointsInput.value),
+              wsPercentage: draft.weightInput ? Number(draft.weightInput.value) : undefined
             }))
             .filter((draft) => {
               const current = data.activities.find((item) => item._id === draft.id);
               return (
-                current && (current.title !== draft.title || current.maxScore !== draft.maxScore)
+                current && (draft.deleted || current.title !== draft.title || current.maxScore !== draft.maxScore || current.wsPercentage !== draft.wsPercentage)
               );
             });
-          if (changes.some((item) => !item.title)) {
+          if (changes.some((item) => !item.deleted && !item.title)) {
             managerStatus.textContent = 'Enter an activity name for every column.';
             return;
           }
@@ -500,10 +510,11 @@ window.ClassBrowser = (function () {
                   '/activities/' +
                   encodeURIComponent(change.id),
                 {
-                  method: 'PUT',
+                  method: change.deleted ? 'DELETE' : 'PUT',
                   body: JSON.stringify({
                     title: change.title,
                     maxScore: change.maxScore,
+                    wsPercentage: change.wsPercentage,
                     version: data.gradeVersion || 0
                   })
                 }
@@ -511,6 +522,12 @@ window.ClassBrowser = (function () {
               if (request !== version) return;
               data.activities = result.activities;
               data.gradeVersion = result.gradeVersion;
+              if (change.deleted) {
+                for (const draftKey of scoreDrafts.keys()) {
+                  if (draftKey.startsWith(subject._id + ':') && draftKey.endsWith(':' + change.id))
+                    scoreDrafts.delete(draftKey);
+                }
+              }
               completed++;
             }
             dialog.close();
@@ -561,6 +578,10 @@ window.ClassBrowser = (function () {
         remove.hidden = true;
         save.textContent = 'Add activity';
         editingCategory = category;
+        wsLabel.hidden = category !== 'examination';
+        wsInput.disabled = category !== 'examination';
+        wsInput.required = category === 'examination';
+        wsInput.value = '';
         editorTitle.textContent = 'Add ' + label + ' activity';
         titleInput.value = '';
         titleInput.placeholder = label + ' ' + (count + 1);
@@ -594,6 +615,12 @@ window.ClassBrowser = (function () {
             (missingName ? titleInput : maxInput).focus();
             return;
           }
+          if (editingCategory === 'examination' &&
+              (!wsInput.value.trim() || !Number.isFinite(Number(wsInput.value)) || Number(wsInput.value) <= 0 || Number(wsInput.value) > 100)) {
+            editorStatus.textContent = 'WS Percentage must be greater than 0 and at most 100.';
+            wsInput.focus();
+            return;
+          }
           if (!editor.reportValidity()) return;
         }
         saving = true;
@@ -613,6 +640,7 @@ window.ClassBrowser = (function () {
                 category: editingCategory,
                 title: titleInput.value.trim(),
                 maxScore: Number(maxInput.value),
+                ...(editingCategory === 'examination' ? { wsPercentage: Number(wsInput.value) } : {}),
                 version: data.gradeVersion || 0
               })
             }
@@ -665,6 +693,30 @@ window.ClassBrowser = (function () {
           : dirty
             ? 'Unsaved scores. Click Save scores when finished.'
             : '';
+      }
+      function examinationCells(student, group) {
+        const cells = [...group.activities.map((activity) => 'WS ' + activity.title), 'PS', 'WS']
+          .map((label) => {
+            const cell = UI.node('span', '\u2014', 'examination-summary-value');
+            cell.setAttribute('aria-label', fullName(student) + ' - ' + label);
+            return cell;
+          });
+        const update = () => {
+          const weighted = group.activities.map((activity) => {
+            const field = scoreInputs.find((item) => item.student === student && item.activity === activity);
+            return field && !field.invalid && field.input.value !== '' &&
+              typeof activity.wsPercentage === 'number' && activity.wsPercentage > 0
+              ? Number(field.input.value) / activity.maxScore * activity.wsPercentage : null;
+          });
+          const ps = weighted.length && weighted.every((value) => value !== null)
+            ? weighted.reduce((sum, value) => sum + value, 0) : null;
+          [...weighted, ps, ps === null ? null : ps * group.weight / 100].forEach((value, index) => {
+            cells[index].textContent = value === null ? '\u2014' : String(Number(value.toFixed(2)));
+          });
+        };
+        summaryUpdates.push(update);
+        update();
+        return cells;
       }
       function summaryCells(student, group) {
         const cells = ['Total', 'PS', 'WS'].map((label) => {
@@ -817,7 +869,8 @@ window.ClassBrowser = (function () {
           return {
             activities,
             label,
-            summary: key !== 'examination',
+            summary: true,
+            examination: key === 'examination',
             maximum: activities.reduce((sum, activity) => sum + activity.maxScore, 0),
             weight: categoryWeights[key] ?? null,
             locked: data.gradeStatus === 'finalized',
@@ -853,7 +906,8 @@ window.ClassBrowser = (function () {
               const values = group.activities.length
                 ? group.activities.map((activity) => scoreCell(student, activity))
                 : [null];
-              if (group.summary) values.push(...summaryCells(student, group));
+              if (group.examination) values.push(...examinationCells(student, group));
+              else values.push(...summaryCells(student, group));
               return values;
             });
             UI.row(body, [
@@ -873,7 +927,7 @@ window.ClassBrowser = (function () {
             'No students enrolled in this subject. Registered learners appear here once enrolled.',
             final
               ? 7
-              : 5 + groups.reduce((count, group) => count + Math.max(1, group.activities.length) + (group.summary ? 3 : 0), 0)
+              : 5 + groups.reduce((count, group) => count + Math.max(1, group.activities.length) + (group.examination ? group.activities.length + 2 : 3), 0)
           );
         if (final)
           content.appendChild(

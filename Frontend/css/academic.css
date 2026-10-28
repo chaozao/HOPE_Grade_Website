@@ -598,6 +598,15 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+#class-browser .activity-weighted-header {
+  background: #fff;
+  text-align: center;
+  min-width: 80px;
+}
+#class-browser .examination-summary-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 #class-browser input.state-error {
   border: 2px solid #b42318;
   background: #fff0ef;

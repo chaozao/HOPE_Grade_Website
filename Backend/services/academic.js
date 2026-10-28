@@ -112,11 +112,17 @@ async function mySubjects(actor) {
     }))
   );
 }
+function validateWSPercentage(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > 100)
+    P.fail('WS Percentage must be greater than 0 and at most 100.');
+  return value;
+}
 async function addActivity(actor, subjectId, body) {
   if (![1, 2, 3].includes(body?.term)) P.fail('Select a valid term.');
   if (!['writtenOral', 'performanceTasks', 'examination'].includes(body?.category))
     P.fail('Select a valid activity category.');
   const title = P.text(body?.title, 'activity title', 100);
+  const wsPercentage = body.category === 'examination' ? validateWSPercentage(body.wsPercentage) : undefined;
   if (!Number.isInteger(body?.maxScore) || body.maxScore < 1 || body.maxScore > 10000)
     P.fail('Maximum score must be a whole number from 1 to 10000.');
   let result;
@@ -135,7 +141,8 @@ async function addActivity(actor, subjectId, body) {
       term: body.term,
       category: body.category,
       title,
-      maxScore: body.maxScore
+      maxScore: body.maxScore,
+      wsPercentage
     });
     await touch(subject, session);
     await audit(
@@ -143,7 +150,7 @@ async function addActivity(actor, subjectId, body) {
       'activity-added',
       {
         subject: subject._id,
-        details: { term: body.term, category: body.category, title, maxScore: body.maxScore }
+        details: { term: body.term, category: body.category, title, maxScore: body.maxScore, wsPercentage }
       },
       session
     );
@@ -187,6 +194,8 @@ async function changeActivity(actor, subjectId, activityId, body, remove = false
     else {
       activity.title = title;
       activity.maxScore = body.maxScore;
+      if (activity.category === 'examination' && body.wsPercentage !== undefined)
+        activity.wsPercentage = validateWSPercentage(body.wsPercentage);
     }
     await touch(subject, session);
     await audit(
