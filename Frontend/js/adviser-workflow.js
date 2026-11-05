@@ -246,7 +246,9 @@ document.addEventListener('DOMContentLoaded', function () {
       action.appendChild(print);
       if (!student.readyForReport)
         action.appendChild(
-          UI.node('span', 'Waiting for complete, finalized grades', 'workflow-detail')
+          UI.node('span', student.subjects.some((subject) => subject.grade === null)
+            ? 'Complete and save all three terms, then finalize each subject.'
+            : 'Grades complete. Each subject teacher must finalize their subject in Class → Final Grades.', 'workflow-detail')
         );
       UI.row(students, [student.lrn || 'Not recorded', name, list, action]);
     });

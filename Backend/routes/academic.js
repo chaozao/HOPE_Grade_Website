@@ -100,6 +100,10 @@ router.post(
   route((req) => service.addActivity(req.user, req.params.id, req.body))
 );
 router.put(
+  '/teacher/subjects/:id/activity-order',
+  route((req) => service.reorderActivities(req.user, req.params.id, req.body))
+);
+router.put(
   '/teacher/subjects/:id/activities/:activityId',
   route((req) => service.changeActivity(req.user, req.params.id, req.params.activityId, req.body))
 );

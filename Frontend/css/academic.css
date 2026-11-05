@@ -498,6 +498,25 @@
   display: grid;
   gap: 8px;
 }
+#class-browser .activity-manager-status {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: #b42318;
+}
+#class-browser .activity-drag-handle {
+  cursor: grab;
+  touch-action: none;
+  padding: 10px 6px;
+  flex: 0 0 auto;
+}
+#class-browser .activity-drag-handle:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+#class-browser .activity-manager-row.is-dragging {
+  background: #edf4fa;
+  outline: 2px solid #397ab8;
+}
 #class-browser .activity-number {
   vertical-align: middle;
   height: 76px;
@@ -606,6 +625,14 @@
 #class-browser .examination-summary-value {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+#class-browser .term-grade-failed {
+  color: #b42318;
+  font-weight: 700;
+}
+#class-browser .term-grade-passed {
+  color: #207044;
+  font-weight: 700;
 }
 #class-browser input.state-error {
   border: 2px solid #b42318;

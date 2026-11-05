@@ -248,6 +248,30 @@ window.ClassBrowser = (function () {
       manage.disabled = true;
       const toolbarActions = UI.node('div', undefined, 'class-toolbar-actions');
       toolbarActions.append(manage, label);
+      const finalizeButton = UI.button('Finalize grades', async () => {
+        if (finalizeButton.disabled || saving) return;
+        if (!window.confirm('Finalize and lock all three terms for this subject? Further changes will require reopening by the class adviser.')) return;
+        saving = true;
+        finalizeButton.disabled = true;
+        select.disabled = back.disabled = true;
+        try {
+          await UI.api('/teacher/subjects/' + encodeURIComponent(subject._id) + '/finalize', {
+            method: 'POST', body: JSON.stringify({ version: data.gradeVersion || 0 })
+          });
+          data = await UI.api('/teacher/subjects/' + encodeURIComponent(subject._id) + '/roster');
+          render();
+          message('Grades finalized. The class adviser can generate a final report once all enrolled subjects are finalized.');
+        } catch (error) {
+          message(error.message, true);
+        } finally {
+          saving = false;
+          select.disabled = back.disabled = false;
+          refreshScoreControls();
+        }
+      });
+      finalizeButton.id = 'finalize-activity-grades';
+      finalizeButton.hidden = true;
+      toolbarActions.appendChild(finalizeButton);
       toolbar.appendChild(toolbarActions);
       const dialog = UI.node('dialog', undefined, 'activity-dialog');
       dialog.setAttribute('aria-labelledby', 'activity-editor-title');
@@ -318,7 +342,7 @@ window.ClassBrowser = (function () {
         if (!saving && pressedOutside && outsideDialog(event)) dialog.close();
         pressedOutside = false;
       });
-      function manageColumns() {
+      function manageColumns(initialCategory = '') {
         if (!data || saving || select.value === '4') return;
         dialog.classList.toggle('managing-columns', true);
         editor.hidden = true;
@@ -353,6 +377,22 @@ window.ClassBrowser = (function () {
         manager.appendChild(categoryLabel);
         controls.push(categorySelect);
         const sections = new Map();
+        const orders = new Map();
+        function moveActivity(draft, targetIndex) {
+          if (saving || locked || draft.deleted) return;
+          const order = orders.get(draft.category);
+          const from = order.indexOf(draft.id);
+          if (targetIndex < 0 || targetIndex >= order.length || targetIndex === from) return;
+          order.splice(from, 1);
+          order.splice(targetIndex, 0, draft.id);
+          const section = sections.get(draft.category);
+          order.forEach((id, index) => {
+            const item = drafts.find((entry) => entry.id === id);
+            section.appendChild(item.row);
+            item.nameLabel.firstChild.textContent = (index + 1) + '. Activity name';
+          });
+          managerStatus.textContent = 'Order changed. Click Save changes to apply it.';
+        }
         function showCategory(key) {
           categorySelect.value = key;
           sections.forEach((section, category) => { section.hidden = category !== key; });
@@ -365,6 +405,7 @@ window.ClassBrowser = (function () {
             (item) => item.term === Number(select.value) && item.category === key
           );
           const section = UI.node('section', undefined, 'activity-manager-group');
+          orders.set(key, activities.map((activity) => activity._id));
           sections.set(key, section);
           section.hidden = key !== categorySelect.value;
           section.appendChild(UI.node('h4', label));
@@ -407,8 +448,44 @@ window.ClassBrowser = (function () {
               info.appendChild(weightLabel);
               controls.push(weightInput);
             }
-            const draft = { id: activity._id, category: key, nameInput, pointsInput, weightInput, deleted: false };
+            const draft = { id: activity._id, category: key, row, nameLabel, nameInput, pointsInput, weightInput, deleted: false };
             drafts.push(draft);
+            const handle = UI.button('\u2630', () => {});
+            handle.className += ' activity-drag-handle';
+            handle.title = 'Drag to reorder, or use the Up and Down arrow keys';
+            handle.setAttribute('aria-label', 'Reorder ' + activity.title);
+            handle.disabled = locked;
+            controls.push(handle);
+            handle.addEventListener('keydown', (event) => {
+              if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+              event.preventDefault();
+              moveActivity(draft, orders.get(key).indexOf(draft.id) + (event.key === 'ArrowUp' ? -1 : 1));
+              handle.focus();
+            });
+            let dragging = false;
+            handle.addEventListener('pointerdown', (event) => {
+              if (saving || locked || draft.deleted || event.button !== 0) return;
+              dragging = true;
+              handle.setPointerCapture(event.pointerId);
+              row.classList.toggle('is-dragging', true);
+            });
+            handle.addEventListener('pointermove', (event) => {
+              if (!dragging) return;
+              const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.activity-manager-row');
+              const other = drafts.find((item) => item.row === target && item.category === key);
+              if (other && other !== draft) {
+                moveActivity(draft, orders.get(key).indexOf(other.id));
+                // Reacquire capture after moving the handle's row in the DOM.
+                handle.setPointerCapture(event.pointerId);
+              }
+              const bounds = dialog.getBoundingClientRect();
+              if (event.clientY < bounds.top + 50) dialog.scrollTop -= 16;
+              if (event.clientY > bounds.bottom - 50) dialog.scrollTop += 16;
+            });
+            const stopDrag = () => { dragging = false; row.classList.toggle('is-dragging', false); };
+            handle.addEventListener('pointerup', stopDrag);
+            handle.addEventListener('pointercancel', stopDrag);
+            handle.addEventListener('lostpointercapture', stopDrag);
             controls.push(nameInput, pointsInput);
             const undo = UI.button('Undo', () => {
               if (saving || locked || undo.disabled) return;
@@ -426,6 +503,7 @@ window.ClassBrowser = (function () {
               row.hidden = !current;
               nameInput.disabled = pointsInput.disabled = saving || locked || draft.deleted || !current;
               if (weightInput) weightInput.disabled = nameInput.disabled;
+              handle.disabled = nameInput.disabled;
               deleteColumn.disabled = saving || locked || draft.deleted || !current;
               deleteColumn.textContent = draft.deleted ? 'Pending deletion' : 'Delete';
               undo.disabled = saving || locked || !current ||
@@ -449,12 +527,13 @@ window.ClassBrowser = (function () {
             controls.push(undo, deleteColumn);
             const rowActions = UI.node('div', undefined, 'activity-manager-row-actions');
             rowActions.append(undo, deleteColumn);
-            row.append(info, rowActions);
+            row.append(handle, info, rowActions);
             section.appendChild(row);
           });
           manager.appendChild(section);
         });
         const managerStatus = UI.node('p');
+        managerStatus.className = 'activity-manager-status';
         managerStatus.setAttribute('role', 'status');
         const buttons = UI.node('div', undefined, 'activity-editor-actions');
         const dismiss = UI.button('Cancel', () => dialog.close());
@@ -477,6 +556,15 @@ window.ClassBrowser = (function () {
             draft.weightInput?.checkValidity?.() === false
           ));
           if (invalid) showCategory(invalid.category);
+          const missingWeight = drafts.find((draft) => !draft.deleted && draft.weightInput &&
+            (!draft.weightInput.value.trim() || !Number.isFinite(Number(draft.weightInput.value)) ||
+              Number(draft.weightInput.value) <= 0 || Number(draft.weightInput.value) > 100));
+          if (missingWeight) {
+            showCategory('examination');
+            managerStatus.textContent = 'Enter a WS Percentage greater than 0 and at most 100 for each examination.';
+            missingWeight.weightInput.focus();
+            return;
+          }
           if (!manager.reportValidity()) return;
           const changes = drafts
             .map((draft) => ({
@@ -522,6 +610,9 @@ window.ClassBrowser = (function () {
               if (request !== version) return;
               data.activities = result.activities;
               data.gradeVersion = result.gradeVersion;
+              if (!change.deleted && change.wsPercentage !== undefined &&
+                  data.activities.find((activity) => activity._id === change.id)?.wsPercentage !== change.wsPercentage)
+                throw new Error('The server did not save the WS Percentage. Restart the backend with the latest code, then save again.');
               if (change.deleted) {
                 for (const draftKey of scoreDrafts.keys()) {
                   if (draftKey.startsWith(subject._id + ':') && draftKey.endsWith(':' + change.id))
@@ -530,14 +621,27 @@ window.ClassBrowser = (function () {
               }
               completed++;
             }
+            for (const [category, order] of orders) {
+              const current = data.activities.filter((activity) => activity.term === Number(select.value) && activity.category === category).map((activity) => activity._id);
+              const desired = order.filter((id) => current.includes(id));
+              if (desired.every((id, index) => id === current[index])) continue;
+              const result = await UI.api('/teacher/subjects/' + encodeURIComponent(subject._id) + '/activity-order', {
+                method: 'PUT', body: JSON.stringify({ term: Number(select.value), category, activityIds: desired, version: data.gradeVersion || 0 })
+              });
+              if (request !== version) return;
+              data.activities = result.activities;
+              data.gradeVersion = result.gradeVersion;
+              completed++;
+            }
             dialog.close();
             render();
-            message(changes.length ? 'Column changes saved.' : 'No changes to save.');
+            message(completed ? 'Column changes saved.' : 'No changes to save.');
           } catch (error) {
             if (request === version) {
               render();
               managerStatus.textContent =
                 (completed ? completed + ' column(s) saved. ' : '') + error.message;
+              managerStatus.scrollIntoView?.({ block: 'nearest' });
             }
           } finally {
             saving = false;
@@ -547,6 +651,7 @@ window.ClassBrowser = (function () {
             refreshUndo.forEach((refresh) => refresh());
           }
         };
+        if (categories.some(([key]) => key === initialCategory)) showCategory(initialCategory);
         if (!dialog.open) dialog.showModal();
       }
       function showEditor() {
@@ -687,6 +792,12 @@ window.ClassBrowser = (function () {
         summaryUpdates.forEach((update) => update());
         const invalid = scoreInputs.some((field) => field.invalid);
         const dirty = scoreInputs.some((field) => scoreDrafts.has(field.key));
+        const unsaved = [...scoreDrafts.keys()].some((key) => key.startsWith(subject._id + ':'));
+        const complete = data?.roster?.length > 0 && data.roster.every((student) => finalAverage(calculatedTerms(student)) !== null);
+        finalizeButton.hidden = select.value !== '4';
+        finalizeButton.textContent = data?.gradeStatus === 'finalized' ? 'Grades finalized' : 'Finalize grades';
+        finalizeButton.disabled = saving || unsaved || !complete || data?.gradeStatus === 'finalized' || !data?.canRequestEdit;
+        finalizeButton.title = unsaved ? 'Save scores in every term first.' : !complete ? 'Complete all three terms for every learner first.' : !data?.canRequestEdit ? 'A class adviser must be assigned first.' : 'Finalize and lock this subject for final reports.';
         saveScores.disabled = saving || data?.gradeStatus === 'finalized' || !dirty || invalid;
         scoreStatus.textContent = invalid
           ? 'Fix the highlighted scores before saving.'
@@ -708,8 +819,7 @@ window.ClassBrowser = (function () {
               typeof activity.wsPercentage === 'number' && activity.wsPercentage > 0
               ? Number(field.input.value) / activity.maxScore * activity.wsPercentage : null;
           });
-          const ps = weighted.length && weighted.every((value) => value !== null)
-            ? weighted.reduce((sum, value) => sum + value, 0) : null;
+          const ps = window.TermGrades.examinationPS(group.activities, weighted);
           [...weighted, ps, ps === null ? null : ps * group.weight / 100].forEach((value, index) => {
             cells[index].textContent = value === null ? '\u2014' : String(Number(value.toFixed(2)));
           });
@@ -742,6 +852,41 @@ window.ClassBrowser = (function () {
         summaryUpdates.push(update);
         update();
         return cells;
+      }
+      function calculatedTerms(student) {
+        const scores = { ...student.activityScores };
+        for (const activity of data.activities || []) {
+          const draft = scoreDrafts.get(subject._id + ':' + student.studentId + ':' + activity._id);
+          if (draft) scores[activity._id] = draft.raw === '' ? null : Number(draft.raw);
+        }
+        scoreInputs.filter((field) => field.student === student).forEach((field) => {
+          scores[field.activity._id] = field.invalid || field.input.value === '' ? null : Number(field.input.value);
+        });
+        return Object.fromEntries([1, 2, 3].map((term) => [term,
+          window.TermGrades.calculate(data.activities || [], scores, term)
+        ]));
+      }
+      function termGradeCell(grade) {
+        const cell = UI.node('span');
+        updateTermGrade(cell, grade);
+        return cell;
+      }
+      function updateTermGrade(cell, grade) {
+        cell.textContent = grade === null || grade === undefined ? '\u2014' : String(grade);
+        cell.className = grade === null || grade === undefined ? '' : grade < 75 ? 'term-grade-failed' : 'term-grade-passed';
+        cell.title = grade === null || grade === undefined ? 'Not graded' : grade < 75 ? 'Failed' : 'Passed';
+      }
+      function termCells(student) {
+        const initial = UI.node('span'), grade = UI.node('span'), descriptor = UI.node('span');
+        const update = () => {
+          const term = calculatedTerms(student)[Number(select.value)];
+          initial.textContent = term.initialGrade === null ? '\u2014' : term.initialGrade.toFixed(2);
+          updateTermGrade(grade, term.termGrade);
+          descriptor.textContent = term.descriptor;
+        };
+        summaryUpdates.push(update);
+        update();
+        return [initial, grade, descriptor];
       }
       function scoreCell(student, activity) {
         const cell = UI.node('div', undefined, 'activity-score-cell');
@@ -877,6 +1022,21 @@ window.ClassBrowser = (function () {
             add: () => addActivity(key, label, activities.length)
           };
         });
+        const missingWeights = groups[2].activities.filter((activity) =>
+          typeof activity.wsPercentage !== 'number' || !Number.isFinite(activity.wsPercentage) ||
+          activity.wsPercentage <= 0 || activity.wsPercentage > 100
+        );
+        if (!final && missingWeights.length) {
+          const notice = UI.node('div', undefined, 'workflow-status is-error');
+          notice.id = 'examination-weight-notice';
+          notice.setAttribute('role', 'status');
+          notice.appendChild(UI.node('p', 'Examination WS and PS need a WS Percentage for: ' +
+            missingWeights.map((activity) => activity.title).join(', ') +
+            '. Maximum points and WS Percentage are separate settings.'));
+          if (data.gradeStatus !== 'finalized')
+            notice.appendChild(UI.button('Set examination percentages', () => manageColumns('examination')));
+          content.appendChild(notice);
+        }
         const body = table(
           content,
           subject.name + ' — ' + subject.className + ' · ' + select.selectedOptions[0].textContent,
@@ -888,20 +1048,19 @@ window.ClassBrowser = (function () {
           fullName(a).localeCompare(fullName(b), 'en', { sensitivity: 'base' })
         );
         rows.forEach((student) => {
-          const terms = student.terms || {};
+          const terms = data.activities?.length ? calculatedTerms(student) : student.terms || {};
           if (final) {
             const average = finalAverage(terms);
             UI.row(body, [
               fullName(student),
-              terms[1]?.termGrade,
-              terms[2]?.termGrade,
-              terms[3]?.termGrade,
+              termGradeCell(terms[1]?.termGrade),
+              termGradeCell(terms[2]?.termGrade),
+              termGradeCell(terms[3]?.termGrade),
               average === null ? null : Number(average.toFixed(1)),
-              average === null ? null : student.finalDescriptor,
+              average === null ? null : window.TermGrades.descriptor(average),
               average === null ? 'Incomplete' : average >= 75 ? 'Passed' : 'Failed'
             ]);
           } else {
-            const term = terms[select.value] || {};
             const activityValues = groups.flatMap((group) => {
               const values = group.activities.length
                 ? group.activities.map((activity) => scoreCell(student, activity))
@@ -914,9 +1073,7 @@ window.ClassBrowser = (function () {
               student.lrn || '—',
               fullName(student),
               ...activityValues,
-              term.initialGrade,
-              term.termGrade,
-              term.descriptor ?? 'Not graded'
+              ...termCells(student)
             ]);
           }
         });
@@ -937,9 +1094,9 @@ window.ClassBrowser = (function () {
               'table-footnote'
             )
           );
-        if (rows.length && rows.every((student) => !student.terms))
+        if (!final && rows.length)
           content.appendChild(
-            UI.node('p', 'Term grades have not been recorded yet.', 'table-footnote')
+            UI.node('p', 'Initial Grade is the sum of the three category weighted scores. Examination PS is the sum of exam contributions divided by the total exam weight, multiplied by 100; Examination WS is 20% of PS. Complete all activities and examination percentages to calculate the Term Grade.', 'table-footnote')
           );
       }
       select.disabled = true;

@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="css/profile.css" />
     <link rel="stylesheet" href="css/section-subjects.css" />
     <link rel="stylesheet" href="css/admin-history.css" />
+    <link rel="stylesheet" href="css/profile-photo.css" />
   </head>
   <body>
     <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
@@ -237,9 +238,9 @@
             <div class="settings-card">
               <h2>Profile photo</h2>
               <div class="avatar-upload">
-                <div class="avatar-preview" id="avatar-preview">
+                <button type="button" class="avatar-preview" id="avatar-preview" aria-label="View full profile photo" disabled>
                   <i class="bi bi-person-fill"></i>
-                </div>
+                </button>
                 <div class="avatar-upload-actions">
                   <label class="btn-secondary" for="photo-input">Choose photo</label>
                   <input type="file" id="photo-input" accept="image/*" />
@@ -521,6 +522,7 @@
 
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/profile-photo.js"></script>
     <script src="js/sidebar-toggle.js"></script>
     <script src="js/academic-ui.js"></script>
     <script src="js/section-subjects.js"></script>

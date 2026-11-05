@@ -57,14 +57,8 @@ document.addEventListener('DOMContentLoaded', function () {
     banner.hidden = false;
   }
 
-  const avatarPreview = document.getElementById('avatar-preview');
-
   function renderAvatar(photoPath) {
-    if (photoPath) {
-      avatarPreview.innerHTML = '<img src="' + API_BASE_URL + photoPath + '" alt="Profile photo">';
-    } else {
-      avatarPreview.innerHTML = '<i class="bi bi-person-fill"></i>';
-    }
+    window.ProfilePhoto.render(photoPath);
   }
 
   async function loadProfile() {

@@ -13,7 +13,22 @@ window.AcademicUI = (function () {
         window.location.href = 'index.html';
         throw new Error('Please sign in again.');
       }
-      const data = await response.json();
+      const routeLabel = (options.method || 'GET') + ' ' + path;
+      if (response.status === 404 && path.endsWith('/activity-order')) {
+        const error = new Error('Column ordering is unavailable on the running backend (404). Restart the Node server from the Backend folder, then click Save changes again. Your pending order is still in this modal.');
+        error.status = 404;
+        throw error;
+      }
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        if (parseError.name === 'AbortError') throw parseError;
+        const error = new Error('The server returned an unexpected response for ' + routeLabel +
+          ' (HTTP ' + response.status + '). Check that the updated Node backend is running on port 3000, then retry.');
+        error.status = response.status;
+        throw error;
+      }
       if (!response.ok) {
         const error = new Error(data.error || 'Request failed.');
         error.status = response.status;

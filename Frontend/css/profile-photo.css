@@ -1,0 +1,22 @@
+.user-avatar { overflow: hidden; flex-shrink: 0; }
+.user-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+button.avatar-preview { border: 0; padding: 0; cursor: zoom-in; }
+button.avatar-preview:disabled { cursor: default; }
+button.avatar-preview:focus-visible { outline: 3px solid #d98a33; outline-offset: 4px; }
+.profile-photo-viewer {
+  margin: auto;
+  width: min(900px, 96vw);
+  max-height: 92dvh;
+  padding: 12px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  overflow: auto;
+}
+.profile-photo-viewer::backdrop { background: rgb(0 0 0 / 85%); }
+.profile-photo-viewer h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.profile-photo-controls { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.profile-photo-controls button { padding: 8px 12px; border: 1px solid #ffffff55; border-radius: 24px; background: #252525; color: #fff; font: inherit; cursor: pointer; }
+.profile-photo-controls button:disabled { opacity: 0.4; cursor: default; }
+.profile-photo-viewport { height: 68dvh; overflow: auto; padding: 12px; display: grid; }
+.profile-photo-viewport img { display: block; max-width: none; margin: auto; border-radius: 50%; object-fit: cover; flex-shrink: 0; }

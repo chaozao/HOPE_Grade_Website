@@ -664,12 +664,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function renderAvatar(photoPath) {
-    const avatarPreview = document.getElementById('avatar-preview');
-    if (photoPath) {
-      avatarPreview.innerHTML = '<img src="' + API_BASE_URL + photoPath + '" alt="Profile photo">';
-    } else {
-      avatarPreview.innerHTML = '<i class="bi bi-person-fill"></i>';
-    }
+    window.ProfilePhoto.render(photoPath);
   }
 
   async function loadOwnProfile() {

@@ -7,6 +7,15 @@ const Grade = require('../models/Grade');
 const EditRequest = require('../models/GradeEditRequest');
 const Audit = require('../models/AcademicAudit');
 const P = require('./academic-policy');
+const TermGrades = require('../../Frontend/js/term-grades');
+function reportGrade(subject, grade) {
+  if (!subject?.activities?.length) return P.weightedGrade(grade?.scores);
+  const source = grade?.activityScores;
+  const scores = source instanceof Map ? Object.fromEntries(source) : source || {};
+  const terms = [1, 2, 3].map((term) => TermGrades.calculate(subject.activities, scores, term).termGrade);
+  if (terms.some((value) => value === null)) return null;
+  return Number((terms.reduce((sum, value) => sum + value, 0) / 3).toFixed(1));
+}
 
 async function teacher(actor, session = null) {
   if (actor.role !== 'teacher') P.fail('Only teachers can use this workflow.', 403);
@@ -59,7 +68,7 @@ async function roster(subject, session = null) {
       gender: student.gender,
       gradeLevel: student.gradeLevel || '',
       scores,
-      weightedGrade: P.weightedGrade(scores),
+      weightedGrade: reportGrade(subject, byStudent.get(String(student._id))),
       activityScores: Object.fromEntries(byStudent.get(String(student._id))?.activityScores || [])
     };
   });
@@ -67,6 +76,11 @@ async function roster(subject, session = null) {
 async function teacherRoster(actor, subjectId) {
   const subject = await ownedSubject(actor, subjectId);
   const rows = await roster(subject);
+  rows.forEach((row) => {
+    row.terms = Object.fromEntries([1, 2, 3].map((term) => [term,
+      TermGrades.calculate(subject.activities || [], row.activityScores, term)
+    ]));
+  });
   const cls = await Class.findById(subject.class).populate('adviser', 'username');
   const requests = await EditRequest.find({ subject: subject._id })
     .populate('reviewedBy', 'username')
@@ -204,6 +218,34 @@ async function changeActivity(actor, subjectId, activityId, body, remove = false
       { subject: subject._id, details: { before, after: remove ? null : activity.toObject() } },
       session
     );
+    result = { activities: subject.activities, gradeVersion: subject.gradeVersion };
+  });
+  return result;
+}
+async function reorderActivities(actor, subjectId, body) {
+  if (![1, 2, 3].includes(body?.term) ||
+      !['writtenOral', 'performanceTasks', 'examination'].includes(body?.category) ||
+      !Array.isArray(body?.activityIds)) P.fail('Select a valid activity group and order.');
+  const ids = body.activityIds.map((value) => P.id(value, 'activity'));
+  let result;
+  await mongoose.connection.transaction(async (session) => {
+    const subject = await ownedSubject(actor, subjectId, session);
+    P.requireDraft(subject);
+    P.version(body.version, subject.gradeVersion);
+    const matches = (activity) => activity.term === body.term && activity.category === body.category;
+    const current = subject.activities.filter(matches);
+    const byId = new Map(current.map((activity) => [String(activity._id), activity.toObject()]));
+    if (ids.length !== current.length || new Set(ids).size !== ids.length || ids.some((id) => !byId.has(id)))
+      P.fail('The order must contain each activity in this group exactly once. Reload and try again.');
+    const before = current.map((activity) => String(activity._id));
+    if (ids.some((id, index) => id !== before[index])) {
+      let index = 0;
+      subject.activities = subject.activities.map((activity) => matches(activity) ? byId.get(ids[index++]) : activity.toObject());
+      await touch(subject, session);
+      await audit(actor, 'activities-reordered', {
+        subject: subject._id, details: { term: body.term, category: body.category, before, after: ids }
+      }, session);
+    }
     result = { activities: subject.activities, gradeVersion: subject.gradeVersion };
   });
   return result;
@@ -588,7 +630,7 @@ async function monitor(actor) {
   const lookup = new Map(
     grades.map((grade) => [
       String(grade.student) + ':' + String(grade.subject),
-      P.weightedGrade(grade.scores)
+      reportGrade(subjects.find((subject) => String(subject._id) === String(grade.subject)), grade)
     ])
   );
   const subjectSummaries = subjects.map((subject) => {
@@ -658,8 +700,8 @@ async function finalReport(actor, studentId) {
       }).session(session);
       const entries = included.map((subject) => ({
         name: subject.name,
-        grade: P.weightedGrade(
-          grades.find((grade) => String(grade.subject) === String(subject._id))?.scores
+        grade: reportGrade(subject,
+          grades.find((grade) => String(grade.subject) === String(subject._id))
         ),
         status: subject.gradeStatus || 'draft'
       }));
@@ -725,6 +767,7 @@ module.exports = {
   saveActivityScores,
   addActivity,
   changeActivity,
+  reorderActivities,
   saveGrades,
   finalize,
   requestEdit,

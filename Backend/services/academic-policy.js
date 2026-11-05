@@ -111,7 +111,7 @@ function requireDraft(subject) {
 }
 function requireComplete(roster) {
   if (!roster.length) fail('Enroll students before finalizing grades.');
-  if (roster.some((row) => weightedGrade(row.scores) === null))
+  if (roster.some((row) => ('weightedGrade' in row ? row.weightedGrade : weightedGrade(row.scores)) === null))
     fail('Complete every enrolled student’s scores before finalizing.', 409);
 }
 module.exports = {

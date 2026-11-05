@@ -133,6 +133,37 @@ test('exam percentages validate and persist on creation and edits', async (t) =>
   await assert.rejects(changeActivity(actor, id, activityId, { title: 'ST1', maxScore: 50, version: 2, wsPercentage: 101 }), { status: 400 });
 });
 
+test('reordering preserves activity IDs and isolates terms/categories while enforcing ownership and versions', async (t) => {
+  const { reorderActivities } = require('../services/academic');
+  const actor = { role: 'teacher', userId: 'teacher1' }, id = '123456789012345678901234';
+  const subject = new Subject({ name: 'Science', class: id, activities: [
+    { term: 1, category: 'writtenOral', title: 'A', maxScore: 50 },
+    { term: 1, category: 'performanceTasks', title: 'P', maxScore: 100 },
+    { term: 1, category: 'writtenOral', title: 'B', maxScore: 100 },
+    { term: 2, category: 'writtenOral', title: 'Other term', maxScore: 50 }
+  ] });
+  const record = { _id: id, teacher: actor.userId, activities: subject.activities, gradeStatus: 'draft', gradeVersion: 0, save: async () => {} };
+  t.mock.method(mongoose.connection, 'transaction', async (callback) => callback(null));
+  t.mock.method(User, 'findOne', () => ({ session: async () => ({}) }));
+  t.mock.method(Subject, 'findById', () => ({ session: async () => record }));
+  t.mock.method(Audit, 'create', async () => {});
+  const ids = subject.activities.map((activity) => String(activity._id));
+  const body = { term: 1, category: 'writtenOral', version: 0, activityIds: [ids[2], ids[0]] };
+  for (const activityIds of [[ids[0]], [ids[0], ids[0]], [ids[0], ids[1]], [ids[0], ids[3]]])
+    await assert.rejects(reorderActivities(actor, id, { ...body, activityIds }), { status: 400 });
+  record.teacher = 'someone-else';
+  await assert.rejects(reorderActivities(actor, id, body), { status: 403 });
+  record.teacher = actor.userId;
+  record.gradeStatus = 'finalized';
+  await assert.rejects(reorderActivities(actor, id, body), { status: 409 });
+  record.gradeStatus = 'draft';
+  const result = await reorderActivities(actor, id, body);
+  assert.deepEqual(result.activities.map((activity) => String(activity._id)), [ids[2], ids[1], ids[0], ids[3]]);
+  assert.deepEqual(result.activities.map((activity) => activity.maxScore), [100, 100, 50, 50]);
+  assert.equal(result.gradeVersion, 1);
+  await assert.rejects(reorderActivities(actor, id, body), { status: 409 });
+});
+
 test('activity scores reject maximum bypasses and isolate enrolled students and terms', () => {
   const P = require('../services/academic-policy');
   const studentId = '111111111111111111111111',

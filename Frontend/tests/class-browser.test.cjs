@@ -13,7 +13,7 @@ class Element {
     this.classList = { toggle() {} };
   }
   append(...nodes) {
-    nodes.forEach((node) => { node.parent = this; });
+    nodes.forEach((node) => { node.remove(); node.parent = this; });
     this.children.push(...nodes);
   }
   remove() {
@@ -28,6 +28,7 @@ class Element {
   }
   setAttribute() {}
   focus() {}
+  setPointerCapture() {}
   getBoundingClientRect() {
     return { left: 100, right: 500, top: 100, bottom: 400 };
   }
@@ -52,6 +53,10 @@ class Element {
   }
   get firstElementChild() {
     return this.children[0];
+  }
+  get firstChild() {
+    const element = this;
+    return { set textContent(value) { element.text = value; } };
   }
   get value() {
     return this.selection ?? this.children[0]?.value;
@@ -82,11 +87,12 @@ function fixture(api) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/academic-ui.js'), 'utf8'), context);
   context.AcademicUI = context.window.AcademicUI;
   context.AcademicUI.api = api;
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/term-grades.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/class-browser.js'), 'utf8'), context);
   const root = new Element('div'),
     browser = context.window.ClassBrowser.create(root);
   browser.setSubjects([{ _id: 'science', name: 'Science', className: 'Grade 7', studentCount: 0 }]);
-  return { root, browser };
+  return { root, browser, context };
 }
 
 test('enrollment totals refresh and term tables sort names without reusing legacy grades', async () => {
@@ -341,7 +347,7 @@ test('manager saves edited columns using the latest version and keeps toolbar co
     roster: [],
     activities: [
       { _id: 'a', term: 1, category: 'writtenOral', title: 'WS 1', maxScore: 5 },
-      { _id: 'b', term: 1, category: 'examination', title: 'Exam', maxScore: 20 }
+      { _id: 'b', term: 1, category: 'examination', title: 'Exam', maxScore: 20, wsPercentage: 100 }
     ]
   };
   let saves = 0;
@@ -570,6 +576,206 @@ test('exam weighted columns match the reference and percentage entry is examinat
   await manager.onsubmit({ preventDefault() {} });
   assert.equal(writes, 2);
   assert.equal(results()[0], '12');
+});
+
+test('legacy examinations explain missing weights and recalculate existing scores after setting them', async () => {
+  const data = { totalStudents: 1, gradeVersion: 0, activities: [
+    { _id: 'st1', term: 1, category: 'examination', title: 'ST1', maxScore: 50 },
+    { _id: 'te', term: 1, category: 'examination', title: 'TE', maxScore: 100 }
+  ], roster: [{ studentId: 's', firstName: 'Ana', lastName: 'Santos', activityScores: { st1: 26, te: 70 } }] };
+  let writes = 0;
+  const { root, browser } = fixture(async (url, options) => {
+    if (options) {
+      const body = JSON.parse(options.body);
+      assert.equal(body.version, writes);
+      const activity = data.activities.find((item) => url.endsWith('/' + item._id));
+      activity.wsPercentage = body.wsPercentage;
+      writes++;
+      return { activities: data.activities, gradeVersion: writes };
+    }
+    return data;
+  });
+  await browser.show();
+  findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
+  await flush();
+  assert.match(byId(root, 'examination-weight-notice').textContent, /ST1, TE/);
+  findAll(root, (node) => node.tag === 'button' && node.textContent === 'Set examination percentages')[0].events.click();
+  assert.equal(byId(root, 'activity-manager-category').value, 'examination');
+  const manager = findAll(root, (node) => node.className === 'activity-manager')[0];
+  await manager.onsubmit({ preventDefault() {} });
+  assert.equal(writes, 0);
+  assert.match(manager.textContent, /Enter a WS Percentage/);
+  const inputs = findAll(manager, (node) => node.tag === 'input');
+  inputs[2].value = '40'; inputs[5].value = '60';
+  await manager.onsubmit({ preventDefault() {} });
+  assert.equal(writes, 2);
+  assert.equal(byId(root, 'examination-weight-notice'), undefined);
+  assert.deepEqual(findAll(root, (node) => node.className === 'examination-summary-value').map((node) => node.textContent), ['20.8', '42', '62.8', '12.56']);
+});
+
+test('initial and transmuted term grades update live with colors and descriptors and survive reload', async () => {
+  const data = { totalStudents: 1, gradeVersion: 0, activities: [
+    { _id: 'w', term: 1, category: 'writtenOral', title: 'Work', maxScore: 100 },
+    { _id: 'p', term: 1, category: 'performanceTasks', title: 'Task', maxScore: 100 },
+    { _id: 'e', term: 1, category: 'examination', title: 'Exam', maxScore: 100, wsPercentage: 100 }
+  ], roster: [{ studentId: 's', firstName: 'Ana', lastName: 'Santos', activityScores: { w: 70, p: 70, e: 70 } }] };
+  const { root, browser } = fixture(async (url, options) => {
+    if (options) {
+      const payload = JSON.parse(options.body);
+      Object.assign(data.roster[0].activityScores, payload.grades[0].scores);
+      return { gradeVersion: 1 };
+    }
+    return data;
+  });
+  async function open() {
+    await browser.show();
+    findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
+    await flush();
+  }
+  await open();
+  const cells = () => byId(root, 'class-grades-tbody').children[0].children.slice(-3);
+  assert.deepEqual(cells().map((cell) => cell.textContent), ['70.00', '75', 'Connecting']);
+  assert.equal(cells()[1].children[0].className, 'term-grade-passed');
+  const written = findAll(root, (node) => node.className === 'activity-score-input')[0];
+  written.value = '69'; written.events.input();
+  assert.deepEqual(cells().map((cell) => cell.textContent), ['69.80', '74', 'Developing']);
+  assert.equal(cells()[1].children[0].className, 'term-grade-failed');
+  written.value = ''; written.events.input();
+  assert.deepEqual(cells().map((cell) => cell.textContent), ['—', '—', 'Not graded']);
+  written.value = '69'; written.events.input();
+  await byId(root, 'save-activity-scores').events.click();
+  await open();
+  assert.deepEqual(cells().map((cell) => cell.textContent), ['69.80', '74', 'Developing']);
+});
+
+test('custom order stays local until saved and survives reload without moving scores to another activity', async () => {
+  const data = { totalStudents: 1, gradeVersion: 0, activities: [
+    { _id: 'a', term: 1, category: 'writtenOral', title: 'Alpha', maxScore: 50 },
+    { _id: 'b', term: 1, category: 'writtenOral', title: 'Beta', maxScore: 100 }
+  ], roster: [{ studentId: 's', firstName: 'Ana', lastName: 'Santos', activityScores: { a: 20, b: 80 } }] };
+  let writes = 0;
+  const { root, browser } = fixture(async (url, options) => {
+    if (options) {
+      assert.ok(url.endsWith('/activity-order'));
+      const body = JSON.parse(options.body);
+      assert.equal(body.category, 'writtenOral');
+      assert.equal(body.term, 1);
+      assert.equal(body.version, 0);
+      assert.deepEqual(body.activityIds, ['b', 'a']);
+      data.activities = body.activityIds.map((id) => data.activities.find((item) => item._id === id));
+      writes++;
+      return { activities: data.activities, gradeVersion: 1 };
+    }
+    return data;
+  });
+  async function open() {
+    await browser.show();
+    findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
+    await flush();
+  }
+  function manager() {
+    findAll(root, (node) => node.textContent === 'Manage columns')[0].events.click();
+    const category = byId(root, 'activity-manager-category');
+    category.value = 'writtenOral'; category.events.change();
+    return findAll(root, (node) => node.className === 'activity-manager')[0];
+  }
+  await open();
+  let form = manager();
+  const move = () => findAll(form, (node) => node.className?.includes('activity-drag-handle'))[1].events.keydown({ key: 'ArrowUp', preventDefault() {} });
+  move();
+  assert.equal(writes, 0);
+  assert.equal(findAll(form, (node) => node.tag === 'input')[0].value, 'Beta');
+  findAll(form, (node) => node.textContent === 'Cancel')[0].events.click();
+  form = manager();
+  assert.equal(findAll(form, (node) => node.tag === 'input')[0].value, 'Alpha');
+  move();
+  await form.onsubmit({ preventDefault() {} });
+  assert.equal(writes, 1);
+  await open();
+  assert.deepEqual(findAll(root, (node) => node.className === 'activity-score-input').map((node) => node.value), ['80', '20']);
+});
+
+test('exam normalization updates PS, WS and grades for terms 1–3 including weights totaling 170', async () => {
+  const data = { totalStudents: 1, gradeVersion: 0, activities: [],
+    roster: [{ studentId: 's', firstName: 'Ana', lastName: 'Santos', activityScores: {} }] };
+  for (const [term, weights] of [[1, [30,30,30,40,40]], [2, [20,20]], [3, [30,70]]]) {
+    const items = [
+      { category: 'writtenOral', title: 'Written' },
+      { category: 'performanceTasks', title: 'Task' },
+      ...weights.map((wsPercentage, index) => ({ category: 'examination', title: 'Exam ' + index, wsPercentage }))
+    ];
+    items.forEach((item, index) => {
+      const id = term + '-' + index;
+      data.activities.push({ ...item, _id: id, term, maxScore: 100 });
+      data.roster[0].activityScores[id] = 100;
+    });
+  }
+  const { root, browser } = fixture(async () => data);
+  await browser.show();
+  findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
+  await flush();
+  const select = byId(root, 'class-term-select');
+  const exams = () => findAll(root, (node) => node.className === 'examination-summary-value').map((node) => node.textContent);
+  for (const value of ['1', '2', '3']) {
+    select.value = value; select.events.change();
+    assert.deepEqual(exams().slice(-2), ['100', '20']);
+    const cells = byId(root, 'class-grades-tbody').children[0].children.slice(-3);
+    assert.deepEqual(cells.map((cell) => cell.textContent), ['100.00', '100', 'Advancing']);
+  }
+  select.value = '1'; select.events.change();
+  const firstExam = findAll(root, (node) => node.className === 'activity-score-input')[2];
+  firstExam.value = '0'; firstExam.events.input();
+  assert.deepEqual(exams().slice(-2), ['82.35', '16.47']);
+  assert.deepEqual(byId(root, 'class-grades-tbody').children[0].children.slice(-3).map((cell) => cell.textContent), ['96.47', '97', 'Advancing']);
+});
+
+test('Final Grades exposes finalization only for complete saved terms and locks after confirming', async () => {
+  const data = { totalStudents: 1, gradeVersion: 2, canRequestEdit: true, gradeStatus: 'draft', activities: [],
+    roster: [{ studentId: 's', firstName: 'Ana', lastName: 'Santos', activityScores: {} }] };
+  for (const term of [1, 2, 3]) {
+    for (const category of ['writtenOral', 'performanceTasks', 'examination']) {
+      const id = term + category;
+      data.activities.push({ _id: id, title: id, term, category, maxScore: 100, wsPercentage: 100 });
+      data.roster[0].activityScores[id] = 100;
+    }
+  }
+  let writes = 0;
+  const { root, browser, context } = fixture(async (url, options) => {
+    if (options) {
+      assert.ok(url.endsWith('/finalize'));
+      assert.equal(JSON.parse(options.body).version, 2);
+      writes++;
+      data.gradeStatus = 'finalized';
+      return { message: 'Finalized' };
+    }
+    return data;
+  });
+  await browser.show();
+  findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
+  await flush();
+  const button = byId(root, 'finalize-activity-grades');
+  assert.equal(button.hidden, true);
+  const select = byId(root, 'class-term-select');
+  select.value = '4'; select.events.change();
+  assert.equal(button.hidden, false);
+  assert.equal(button.disabled, false);
+  context.window.confirm = () => false;
+  await button.events.click();
+  assert.equal(writes, 0);
+  select.value = '1'; select.events.change();
+  const input = findAll(root, (node) => node.className === 'activity-score-input')[0];
+  input.value = '90'; input.events.input();
+  select.value = '4'; select.events.change();
+  assert.equal(button.disabled, true);
+  select.value = '1'; select.events.change();
+  const restored = findAll(root, (node) => node.className === 'activity-score-input')[0];
+  restored.value = '100'; restored.events.input();
+  select.value = '4'; select.events.change();
+  context.window.confirm = () => true;
+  await button.events.click();
+  assert.equal(writes, 1);
+  assert.equal(button.textContent, 'Grades finalized');
+  assert.equal(button.disabled, true);
 });
 
 test('activity creation requires both a nonblank name and maximum points', async () => {
