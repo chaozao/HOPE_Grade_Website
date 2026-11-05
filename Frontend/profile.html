@@ -81,12 +81,16 @@
           <div class="settings-card">
             <h2>Profile photo</h2>
             <div class="avatar-upload">
-              <button type="button" class="avatar-preview" id="avatar-preview" aria-label="View full profile photo" disabled>
-                <i class="bi bi-person-fill"></i>
-              </button>
+              <div class="avatar-photo-wrap">
+                <button type="button" class="avatar-preview" id="avatar-preview" aria-label="View full profile photo" disabled>
+                  <i class="bi bi-person-fill"></i>
+                </button>
+                <button type="button" class="avatar-remove" id="remove-profile-photo" aria-label="Remove profile photo" title="Remove profile photo" hidden>&times;</button>
+              </div>
               <div class="avatar-upload-actions">
                 <label class="btn-secondary" for="photo-input">Choose photo</label>
                 <input type="file" id="photo-input" accept="image/*" />
+
                 <p class="field-hint">JPG or PNG, up to 2MB.</p>
               </div>
             </div>

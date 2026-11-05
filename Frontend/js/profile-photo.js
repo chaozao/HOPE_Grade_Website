@@ -15,6 +15,8 @@ window.ProfilePhoto = (function () {
   }
   function render(path) {
     photoUrl = path ? new URL(path, API_BASE_URL).href : '';
+    const remove = document.getElementById('remove-profile-photo');
+    if (remove) remove.hidden = !photoUrl;
     document.querySelectorAll('.user-avatar, #avatar-preview').forEach((target) => {
       const preview = target.id === 'avatar-preview';
       if (preview) {
@@ -96,6 +98,62 @@ window.ProfilePhoto = (function () {
     const preview = document.getElementById('avatar-preview');
     if (preview) {
       preview.addEventListener('click', open);
+      const remove = document.getElementById('remove-profile-photo');
+      async function deletePhoto() {
+        if (remove.disabled || !photoUrl) return;
+        remove.disabled = true;
+        const input = document.getElementById('photo-input');
+        input.disabled = true;
+        const banner = document.getElementById('profile-form-banner') || document.getElementById('form-banner');
+        try {
+          const response = await fetch(API_BASE_URL + '/me/photo', {
+            method: 'DELETE', headers: { Authorization: 'Bearer ' + getToken() }
+          });
+          if (response.status === 404) throw new Error('Restart the updated backend, then try removing the photo again.');
+          const user = await response.json();
+          if (!response.ok) throw new Error(user.error || 'Could not remove your photo.');
+          render(user.photo);
+          input.value = '';
+          banner.textContent = 'Profile photo removed. The default icon has been restored.';
+          banner.className = 'settings-banner settings-banner-success';
+        } catch (error) {
+          banner.textContent = error.message;
+          banner.className = 'settings-banner settings-banner-error';
+        } finally {
+          banner.hidden = false;
+          remove.disabled = input.disabled = false;
+        }
+      }
+      let confirmation;
+      remove?.addEventListener('click', () => {
+        if (remove.disabled || !photoUrl) return;
+        if (!confirmation) {
+          confirmation = node('dialog', '', 'photo-delete-confirm');
+          confirmation.setAttribute('aria-labelledby', 'photo-delete-question');
+          const question = node('p', 'Are you sure you want to delete this picture');
+          question.id = 'photo-delete-question';
+          const actions = node('div', '', 'photo-delete-actions');
+          const no = node('button', 'No'), yes = node('button', 'Yes');
+          no.type = yes.type = 'button';
+          no.autofocus = true;
+          no.addEventListener('click', () => confirmation.close());
+          yes.addEventListener('click', () => {
+            if (!confirmation.open) return;
+            confirmation.close();
+            return deletePhoto();
+          });
+          actions.append(no, yes);
+          confirmation.append(question, actions);
+          confirmation.addEventListener('click', (event) => {
+            const bounds = confirmation.getBoundingClientRect();
+            if (event.target === confirmation &&
+                (event.clientX < bounds.left || event.clientX > bounds.right ||
+                 event.clientY < bounds.top || event.clientY > bounds.bottom)) confirmation.close();
+          });
+          document.body.appendChild(confirmation);
+        }
+        if (!confirmation.open) confirmation.showModal();
+      });
       // These pages already load /me and call render after loading or uploading.
       return;
     }

@@ -25,6 +25,7 @@ const all = (root) => root.children.flatMap((child) => [child, ...all(child)]);
 function fixture(role, previewEnabled = true) {
   const body = new Element('body'), sidebar = new Element('div'), preview = new Element('button');
   preview.id = 'avatar-preview';
+  const remove = new Element('button'), input = new Element('input'), banner = new Element('p');
   const targets = previewEnabled ? [sidebar, preview] : [sidebar];
   body.append(...targets);
   let ready, fetches = 0;
@@ -34,14 +35,49 @@ function fixture(role, previewEnabled = true) {
     document: {
       body, createElement: (tag) => new Element(tag),
       querySelectorAll: () => targets, querySelector: () => sidebar,
-      getElementById: () => previewEnabled ? preview : null,
+      getElementById: (id) => previewEnabled ? ({ 'avatar-preview': preview, 'remove-profile-photo': remove, 'photo-input': input, 'form-banner': banner }[id] || null) : null,
       addEventListener(name, handler) { ready = handler; }
     },
-    fetch: async () => { fetches++; return { ok: true, json: async () => ({ photo: '/uploads/avatars/saved.jpg' }) }; }
+    fetch: async (url, options) => { fetches++; return { ok: true, json: async () => options?.method === 'DELETE' ? {} : ({ photo: '/uploads/avatars/saved.jpg' }) }; }
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../js/profile-photo.js'), 'utf8'), context);
-  return { api: context.window.ProfilePhoto, body, sidebar, preview, ready: () => ready(), fetches: () => fetches };
+  return { api: context.window.ProfilePhoto, body, sidebar, preview, remove, banner, ready: () => ready(), fetches: () => fetches };
 }
+test('Remove photo restores the default icon for each role', async () => {
+  for (const role of ['admin', 'teacher']) {
+    const view = fixture(role);
+    await view.ready();
+    view.api.render('/uploads/avatars/photo.jpg');
+    assert.equal(view.remove.hidden, false);
+    await view.remove.events.click();
+    const confirmation = all(view.body).find((element) => element.className === 'photo-delete-confirm');
+    assert.equal(confirmation.open, true);
+    assert.equal(view.fetches(), 0);
+    await all(confirmation).find((element) => element.textContent === 'Yes').events.click();
+    assert.equal(view.remove.hidden, true);
+    assert.equal(view.sidebar.children[0].tag, 'i');
+    assert.equal(view.preview.disabled, true);
+    assert.match(view.banner.textContent, /default icon has been restored/);
+  }
+});
+test('No and outside clicks close confirmation without deleting the photo', async () => {
+  const view = fixture('teacher');
+  await view.ready();
+  view.api.render('/uploads/avatars/photo.jpg');
+  view.remove.events.click();
+  const dialog = all(view.body).find((element) => element.className === 'photo-delete-confirm');
+  assert.equal(dialog.children[0].textContent, 'Are you sure you want to delete this picture');
+  all(dialog).find((element) => element.textContent === 'No').events.click();
+  assert.equal(dialog.open, false);
+  assert.equal(view.fetches(), 0);
+  view.remove.events.click();
+  dialog.events.click({ target: dialog, clientX: 100, clientY: 100 });
+  assert.equal(dialog.open, true);
+  dialog.events.click({ target: dialog, clientX: 0, clientY: 0 });
+  assert.equal(dialog.open, false);
+  assert.equal(view.fetches(), 0);
+  assert.equal(view.sidebar.children[0].tag, 'img');
+});
 test('saved and newly uploaded photos update sidebar and preview for admins and teachers', async () => {
   for (const role of ['admin', 'teacher']) {
     const view = fixture(role);

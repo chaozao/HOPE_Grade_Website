@@ -344,6 +344,21 @@ app.post('/me/photo', verifyToken, avatarUpload.single('photo'), async (req, res
   }
 });
 
+// Restore the default avatar for the signed-in account only.
+app.delete('/me/photo', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { $unset: { photo: '' } },
+      { returnDocument: 'after' }
+    ).select('-password -resetTokenHash -resetTokenExpiry');
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Could not remove your profile photo. Please retry.' });
+  }
+});
+
 // Change your own password (must prove you know the current one)
 app.put('/me/password', verifyToken, async (req, res) => {
   try {
