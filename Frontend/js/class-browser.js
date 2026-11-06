@@ -82,6 +82,7 @@ window.ClassBrowser = (function () {
         header = UI.node('tr'),
         body = UI.node('tbody');
       body.id = id;
+      if (id === 'class-grades-tbody' && !groups) grid.className = 'grades-table final-grades-table';
       if (groups) {
         const numbers = UI.node('tr'),
           maxima = UI.node('tr');
@@ -227,6 +228,8 @@ window.ClassBrowser = (function () {
       detail.hidden = false;
       detail.replaceChildren();
       let scoreInputs = [];
+      let rosterPage = 1;
+      const rosterPageSize = 8;
       const toolbar = UI.node('div', undefined, 'workflow-toolbar');
       const back = UI.button('', show);
       back.className += ' class-back-button';
@@ -802,7 +805,7 @@ window.ClassBrowser = (function () {
         scoreStatus.textContent = invalid
           ? 'Fix the highlighted scores before saving.'
           : dirty
-            ? 'Unsaved scores. Click Save scores when finished.'
+            ? 'Unsaved scores. Save scores includes changes on every page of this term.'
             : '';
       }
       function examinationCells(student, group) {
@@ -1047,16 +1050,20 @@ window.ClassBrowser = (function () {
         const rows = [...data.roster].sort((a, b) =>
           fullName(a).localeCompare(fullName(b), 'en', { sensitivity: 'base' })
         );
+        const pageCount = Math.max(1, Math.ceil(rows.length / rosterPageSize));
+        rosterPage = Math.min(rosterPage, pageCount);
+        const renderedRows = [];
         rows.forEach((student) => {
+          let studentRow;
           const terms = data.activities?.length ? calculatedTerms(student) : student.terms || {};
           if (final) {
             const average = finalAverage(terms);
-            UI.row(body, [
+            studentRow = UI.row(body, [
               fullName(student),
               termGradeCell(terms[1]?.termGrade),
               termGradeCell(terms[2]?.termGrade),
               termGradeCell(terms[3]?.termGrade),
-              average === null ? null : Number(average.toFixed(1)),
+              average === null ? null : average.toFixed(2),
               average === null ? null : window.TermGrades.descriptor(average),
               average === null ? 'Incomplete' : average >= 75 ? 'Passed' : 'Failed'
             ]);
@@ -1069,14 +1076,41 @@ window.ClassBrowser = (function () {
               else values.push(...summaryCells(student, group));
               return values;
             });
-            UI.row(body, [
+            studentRow = UI.row(body, [
               student.lrn || '—',
               fullName(student),
               ...activityValues,
               ...termCells(student)
             ]);
           }
+          renderedRows.push(studentRow);
         });
+        const pagination = UI.node('nav', undefined, 'workflow-toolbar class-pagination');
+        pagination.setAttribute('aria-label', 'Class table pages');
+        const pageLabel = UI.node('span');
+        pageLabel.id = 'class-roster-page';
+        pageLabel.setAttribute('aria-live', 'polite');
+        const previous = UI.button('Previous', () => {
+          if (!saving && rosterPage > 1) { rosterPage--; updatePage(); }
+        });
+        previous.id = 'class-roster-prev';
+        const next = UI.button('Next', () => {
+          if (!saving && rosterPage < pageCount) { rosterPage++; updatePage(); }
+        });
+        next.id = 'class-roster-next';
+        function updatePage() {
+          renderedRows.forEach((row, index) => {
+            row.hidden = index < (rosterPage - 1) * rosterPageSize || index >= rosterPage * rosterPageSize;
+          });
+          previous.disabled = rosterPage <= 1;
+          next.disabled = rosterPage >= pageCount;
+          const first = rows.length ? (rosterPage - 1) * rosterPageSize + 1 : 0;
+          pageLabel.textContent = 'Page ' + rosterPage + ' of ' + pageCount +
+            ' ? Showing ' + first + '?' + Math.min(rosterPage * rosterPageSize, rows.length) + ' of ' + rows.length + ' students';
+        }
+        pagination.append(previous, pageLabel, next);
+        content.appendChild(pagination);
+        updatePage();
         refreshScoreControls();
         if (!rows.length)
           UI.empty(
@@ -1090,7 +1124,7 @@ window.ClassBrowser = (function () {
           content.appendChild(
             UI.node(
               'p',
-              'Final Grade is the equal average of all three term grades, displayed to one decimal place. All three terms must be complete.',
+              'Final Grade is the equal average of all three term grades, displayed to two decimal places. All three terms must be complete.',
               'table-footnote'
             )
           );
@@ -1101,6 +1135,7 @@ window.ClassBrowser = (function () {
       }
       select.disabled = true;
       select.addEventListener('change', () => {
+        rosterPage = 1;
         dialog.close();
         render();
       });

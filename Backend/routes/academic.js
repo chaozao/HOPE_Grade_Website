@@ -95,6 +95,10 @@ router.get(
   '/teacher/subjects/:id/roster',
   route((req) => service.teacherRoster(req.user, req.params.id))
 );
+router.get('/teacher/subjects/:id/attendance',
+  route((req) => service.attendance(req.user, req.params.id, req.query.date)));
+router.put('/teacher/subjects/:id/attendance/:studentId',
+  route((req) => service.saveAttendance(req.user, req.params.id, req.params.studentId, req.body)));
 router.post(
   '/teacher/subjects/:id/activities',
   route((req) => service.addActivity(req.user, req.params.id, req.body))

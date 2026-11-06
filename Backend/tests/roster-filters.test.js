@@ -18,13 +18,14 @@ test('roster combines grade, section and actual subject enrollment before sortin
   const students = [
     {
       _id: 'a',
+      gender: 'Male',
       lastName: 'Zulu',
       firstName: 'Ana',
       gradeLevel: 'Grade 7',
       class: cls,
       subjects: [science]
     },
-    { _id: 'b', lastName: 'abalos', firstName: 'Maria', gradeLevel: '', class: cls },
+    { _id: 'b', gender: 'Female', lastName: 'abalos', firstName: 'Maria', gradeLevel: '', class: cls },
     {
       _id: 'c',
       lastName: 'Bravo',
@@ -105,6 +106,13 @@ test('roster combines grade, section and actual subject enrollment before sortin
     ['abalos', 'Zulu']
   );
   assert.equal(data.total, 2);
+  for (const [gender, name] of [['Male', 'Zulu'], ['Female', 'abalos']]) {
+    const filtered = await listStudents(actor, { gradeLevel: 'Grade 7', classId: cls, subjectId: science, gender });
+    assert.equal(filtered.total, 1);
+    assert.equal(filtered.students[0].lastName, name);
+  }
+  assert.equal((await listStudents(actor, { classId: cls, subjectId: science, gender: '' })).total, 2);
+  await assert.rejects(listStudents(actor, { gender: 'invalid' }), { status: 400 });
   assert.deepEqual(
     (await listStudents(actor, { gradeLevel: 'Grade 8', classId: cls })).students,
     []

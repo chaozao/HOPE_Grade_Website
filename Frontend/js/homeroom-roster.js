@@ -89,6 +89,7 @@ window.HomeroomRoster = (function () {
         gradeLevel: el('roster-grade').value,
         classId: el('roster-section').value,
         subjectId: el('roster-subject').value,
+        gender: el('roster-gender').value,
         page
       });
       const data = await UI.api('/adviser/students?' + params);
@@ -97,14 +98,15 @@ window.HomeroomRoster = (function () {
       data.students.forEach((student) =>
         UI.row(tbody, [
           student.lrn || 'Not recorded',
-          student.lastName + ', ' + student.firstName,
+          student.lastName,
+          student.firstName,
           student.middleName || student.middleInitial || '—',
           student.gender,
           student.gradeLevel || student.class?.gradeLevel || 'Not recorded'
         ])
       );
       if (!data.students.length)
-        UI.empty(tbody, 'No students match the selected grade level, section, and subject.', 5);
+        UI.empty(tbody, 'No students match the selected filters.', 6);
       el('homeroom-count').textContent =
         data.total + (data.total === 1 ? ' student' : ' students') + ' · Last name A–Z';
       el('roster-page').textContent = 'Page ' + data.page + ' of ' + pages;
@@ -132,6 +134,7 @@ window.HomeroomRoster = (function () {
         pendingFilters();
       });
       el('roster-subject').addEventListener('change', pendingFilters);
+      el('roster-gender').addEventListener('change', pendingFilters);
       el('roster-prev').addEventListener('click', () => {
         if (page > 1) {
           page--;

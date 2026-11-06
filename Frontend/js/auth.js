@@ -138,7 +138,10 @@ function renderAdvisorNavigation(teaching) {
     ['dashboard', 'bi-speedometer2', 'Dashboard'],
     ['homeroom', 'bi-house-door', 'Homeroom']
   ];
-  if (teaching) items.push(['class', 'bi-journal-bookmark', 'Class']);
+  if (teaching) items.push(
+    ['class', 'bi-journal-bookmark', 'Class'],
+    ['student-reports', 'bi-clipboard-data', 'Student Reports']
+  );
   items.push(
     ['requests', 'bi-arrow-repeat', 'Grade Edit Request'],
     ['reports', 'bi-file-earmark-text', 'Final Grade Reports']
@@ -217,7 +220,10 @@ function renderTeacherNavigation(teaching) {
       ? 'class'
       : '';
   const items = [['dashboard', 'bi-speedometer2', 'Dashboard']];
-  if (teaching) items.push(['class', 'bi-journal-bookmark', 'Class']);
+  if (teaching) items.push(
+    ['class', 'bi-journal-bookmark', 'Class'],
+    ['student-reports', 'bi-clipboard-data', 'Student Reports']
+  );
   items.push(['requests', 'bi-arrow-repeat', 'Grade Edit Request']);
   items.forEach(([id, icon, label]) => {
     const link = document.createElement('a');

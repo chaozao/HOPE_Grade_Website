@@ -31,9 +31,65 @@
   background: #f5e7d4;
   color: #784b18;
 }
+/* Match the Homeroom navigation in both teaching workspaces. */
+#view-student-reports .workflow-tabs {
+  gap: 8px;
+  padding-bottom: 0;
+  margin-bottom: 24px;
+}
+#view-student-reports .workflow-tabs button {
+  padding: 14px 16px;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+#view-student-reports .workflow-tabs button.active {
+  background: transparent;
+  color: #294b3f;
+  border-bottom-color: #294b3f;
+  font-weight: 600;
+}
+#view-student-reports .workflow-tabs button:hover {
+  background: #eef1eb;
+}
+#view-student-reports .workflow-tabs button:focus-visible {
+  outline: 2px solid #a96620;
+  outline-offset: 3px;
+}
+@media (max-width: 650px) {
+  #view-student-reports .workflow-tabs {
+    gap: 0;
+  }
+  #view-student-reports .workflow-tabs button {
+    padding: 12px 10px;
+    font-size: 12px;
+  }
+}
 .workflow-toolbar h2 {
   font-size: 18px;
   margin: 0 0 6px;
+}
+.attendance-header { flex-wrap: wrap; gap: 16px; }
+.attendance-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.attendance-filters label { display: flex; flex-direction: column; gap: 6px; color: var(--color-muted); font-size: 12px; }
+.attendance-filters input, .attendance-filters select { min-width: 140px; max-width: 250px; padding: 9px 12px; border: 1px solid var(--color-border); border-radius: 6px; background: #fff; color: var(--color-text); font: inherit; font-size: 14px; }
+.attendance-filters select:disabled { background: #f1efe9; color: #7a817c; cursor: not-allowed; }
+.attendance-note { margin: 12px 20px; color: var(--color-muted); font-size: 13px; line-height: 1.5; }
+.attendance-note:empty { display: none; }
+.attendance-table th:last-child, .attendance-table td:last-child { text-align: center; }
+.attendance-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 115px; padding: 9px 12px; border: 1px solid currentColor; border-radius: 6px; background: #fff; font: inherit; font-size: 14px; cursor: pointer; }
+.attendance-action i { font-size: 20px; }
+.attendance-action.is-unmarked { color: #687078; }
+.attendance-action.is-absent { color: #b42318; background: #fff3f2; }
+.attendance-action.is-present { color: #217346; background: #effaf3; }
+.attendance-action.is-tardy { color: #805c00; background: #fff9df; }
+.attendance-action.is-tardy i { color: #b88600; }
+.attendance-action:hover { box-shadow: 0 0 0 2px currentColor; }
+.attendance-action:focus-visible { outline: 2px solid #294b3f; outline-offset: 3px; }
+@media (max-width: 650px) {
+  .attendance-filters { width: 100%; }
+  .attendance-filters label { flex: 1 1 140px; }
+  .attendance-filters input, .attendance-filters select { width: 100%; max-width: none; }
 }
 .workflow-toolbar > div:first-child {
   flex: 1;
@@ -276,6 +332,11 @@
 }
 .class-browser-table .grades-table {
   width: 100%;
+}
+.class-browser-table .final-grades-table th,
+.class-browser-table .final-grades-table td {
+  text-align: center;
+  vertical-align: middle;
 }
 .class-browser-table th {
   white-space: normal;
@@ -652,4 +713,91 @@
 #class-browser .activity-score-input:disabled {
   background: #f3f3f3;
   cursor: not-allowed;
+}
+
+.attendance-action:disabled { cursor: wait; opacity: 0.65; }
+.attendance-footer, .attendance-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.attendance-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--color-border);
+  justify-content: space-between;
+}
+#attendance-save:not(:disabled) {
+  background: #294b3f;
+  color: #fff;
+  border-color: #294b3f;
+}
+#attendance-save:not(:disabled):hover { background: #1d382e; }
+.attendance-footer button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Attendance uses the available screen space without widening the whole page. */
+#student-report-attendance {
+  min-width: 0;
+  overflow: hidden;
+}
+#student-report-attendance .attendance-header {
+  padding: clamp(12px, 1.5vw, 24px);
+}
+#student-report-attendance .attendance-filters {
+  flex: 1 1 480px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-width: 800px;
+}
+#student-report-attendance .attendance-filters label { min-width: 0; }
+#student-report-attendance .attendance-filters input,
+#student-report-attendance .attendance-filters select {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  min-height: 40px;
+}
+#student-report-attendance .class-table-scroll {
+  max-height: clamp(180px, calc(100dvh - 360px), 600px);
+  overflow: auto;
+}
+#student-report-attendance .attendance-table {
+  min-width: 0;
+  width: 100%;
+  table-layout: fixed;
+}
+#student-report-attendance .attendance-table th,
+#student-report-attendance .attendance-table td {
+  padding: clamp(8px, 1.1vh, 14px) clamp(10px, 1.5vw, 20px);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+#student-report-attendance .attendance-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+#student-report-attendance .attendance-table th:last-child { width: clamp(125px, 28%, 240px); }
+#student-report-attendance .attendance-action { min-height: 44px; box-sizing: border-box; }
+@media (max-height: 750px) {
+  #view-student-reports .content-header { margin-bottom: 16px; }
+  #view-student-reports .workflow-tabs { margin-bottom: 12px; }
+  #student-report-attendance .attendance-header { padding: 12px; }
+  #student-report-attendance .attendance-note { margin: 8px 12px; }
+  #student-report-attendance .attendance-footer { padding: 10px 12px; }
+}
+@media (max-width: 650px) {
+  #student-report-attendance .attendance-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  #student-report-attendance .attendance-filters input,
+  #student-report-attendance .attendance-filters select { font-size: 16px; }
+  #student-report-attendance .class-table-scroll { max-height: clamp(180px, 40dvh, 400px); }
+  #student-report-attendance .attendance-table th:last-child { width: 112px; }
+  #student-report-attendance .attendance-action { min-width: 0; width: 100%; padding: 8px 6px; gap: 5px; font-size: 12px; }
+  #student-report-attendance .attendance-footer { padding: 12px; gap: 12px; }
+  #student-report-attendance .attendance-pagination { flex: 1 1 100%; justify-content: center; gap: 8px; }
+  #attendance-save { width: 100%; min-height: 44px; }
 }

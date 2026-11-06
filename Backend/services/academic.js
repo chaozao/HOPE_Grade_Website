@@ -8,13 +8,47 @@ const EditRequest = require('../models/GradeEditRequest');
 const Audit = require('../models/AcademicAudit');
 const P = require('./academic-policy');
 const TermGrades = require('../../Frontend/js/term-grades');
+const Attendance = require('../models/Attendance');
+function attendanceDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+      !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value)
+    P.fail('Select a valid attendance date.');
+  return value;
+}
+async function attendance(actor, subjectId, date) {
+  date = attendanceDate(date);
+  const subject = await ownedSubject(actor, subjectId);
+  const students = await Student.find(P.rosterFilter(subject)).sort({ lastName: 1, firstName: 1 });
+  const records = await Attendance.find({ subject: subject._id, date });
+  const statuses = new Map(records.map((record) => [String(record.student), record.status]));
+  return { date, roster: students.map((student) => ({
+    studentId: student._id, firstName: student.firstName, lastName: student.lastName,
+    status: statuses.get(String(student._id)) || 'unmarked'
+  })) };
+}
+async function saveAttendance(actor, subjectId, studentId, body) {
+  const date = attendanceDate(body?.date);
+  if (!['unmarked', 'absent', 'present', 'tardy'].includes(body?.status)) P.fail('Select a valid attendance status.');
+  const subject = await ownedSubject(actor, subjectId);
+  const student = await Student.findById(P.id(studentId, 'student'));
+  if (!student || !P.enrolled(student, subject)) P.fail('This student is not enrolled in your subject.', 403);
+  const filter = { subject: subject._id, student: student._id, date };
+  const update = { $set: { status: body.status, updatedBy: actor.userId } };
+  try {
+    await Attendance.updateOne(filter, update, { upsert: true, runValidators: true });
+  } catch (error) {
+    if (error.code !== 11000) throw error;
+    await Attendance.updateOne(filter, update, { runValidators: true });
+  }
+  return { studentId, date, status: body.status };
+}
 function reportGrade(subject, grade) {
   if (!subject?.activities?.length) return P.weightedGrade(grade?.scores);
   const source = grade?.activityScores;
   const scores = source instanceof Map ? Object.fromEntries(source) : source || {};
   const terms = [1, 2, 3].map((term) => TermGrades.calculate(subject.activities, scores, term).termGrade);
   if (terms.some((value) => value === null)) return null;
-  return Number((terms.reduce((sum, value) => sum + value, 0) / 3).toFixed(1));
+  return Number((terms.reduce((sum, value) => sum + value, 0) / 3).toFixed(2));
 }
 
 async function teacher(actor, session = null) {
@@ -114,16 +148,27 @@ async function teacherRoster(actor, subjectId) {
 }
 async function mySubjects(actor) {
   await teacher(actor);
-  const subjects = await Subject.find({ teacher: actor.userId }).populate('class', 'name');
+  const subjects = await Subject.find({ teacher: actor.userId }).populate('class', 'name gradeLevel section');
   return Promise.all(
-    subjects.map(async (subject) => ({
-      _id: subject._id,
-      name: subject.name,
-      classId: subject.class?._id || null,
-      className: subject.class?.name || 'Class unavailable',
-      gradeStatus: subject.gradeStatus || 'draft',
-      studentCount: await Student.countDocuments(P.rosterFilter(subject))
-    }))
+    subjects.map(async (subject) => {
+      const filter = P.rosterFilter(subject);
+      const [studentCount, studentGrades] = await Promise.all([
+        Student.countDocuments(filter),
+        Student.distinct('gradeLevel', filter)
+      ]);
+      return {
+        _id: subject._id,
+        name: subject.name,
+        classId: subject.class?._id || null,
+        className: subject.class?.name || 'Class unavailable',
+        gradeLevel: subject.class?.gradeLevel || '',
+        gradeLevels: [...new Set([subject.class?.gradeLevel, ...studentGrades]
+          .filter((grade) => typeof grade === 'string' && grade.trim()))],
+        section: subject.class?.section || subject.class?.name || '',
+        gradeStatus: subject.gradeStatus || 'draft',
+        studentCount
+      };
+    })
   );
 }
 function validateWSPercentage(value) {
@@ -487,6 +532,10 @@ async function studentOptions(actor) {
 async function listStudents(actor, query) {
   await adviser(actor);
   const filter = {};
+  if (query.gender) {
+    if (!['Male', 'Female'].includes(query.gender)) P.fail('Select a valid gender filter.');
+    filter.gender = query.gender;
+  }
   if (query.classId) filter.class = P.id(query.classId, 'class');
   if (query.gradeLevel) {
     const gradeLevel = P.text(query.gradeLevel, 'grade level', 40);
@@ -761,6 +810,8 @@ async function insights(actor, subjectId) {
   };
 }
 module.exports = {
+  attendance,
+  saveAttendance,
   adviser,
   teacherRoster,
   mySubjects,

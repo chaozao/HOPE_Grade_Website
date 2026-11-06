@@ -47,8 +47,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!ready) return;
     let view = location.hash.slice(1) || 'dashboard';
     if (
-      !['dashboard', 'class', 'requests'].includes(view) ||
-      (view === 'class' && !subjects.length)
+      !['dashboard', 'class', 'student-reports', 'requests'].includes(view) ||
+      (['class', 'student-reports'].includes(view) && !subjects.length)
     ) {
       view = 'dashboard';
       history.replaceState(null, '', location.pathname + location.search);
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
     requestVersion++;
     UI.status('teacher-status', '');
     byId('retry-teacher').hidden = true;
-    ['dashboard', 'class', 'requests'].forEach((id) => {
+    ['dashboard', 'class', 'student-reports', 'requests'].forEach((id) => {
       byId('view-' + id).hidden = id !== view;
     });
     renderTeacherNavigation(subjects.length > 0);

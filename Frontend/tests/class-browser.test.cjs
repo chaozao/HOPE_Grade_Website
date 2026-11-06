@@ -146,9 +146,10 @@ test('failed summaries offer retry and empty rosters show an enrollment message'
 
 test('final grades average all three terms and require every grade, including valid zero scores', async () => {
   for (const [values, expected, remark] of [
-    [[80, 85, 90], '85', 'Passed'],
-    [[80, 80, 81], '80.3', 'Passed'],
-    [[0, 75, 75], '50', 'Failed'],
+    [[80, 85, 90], '85.00', 'Passed'],
+    [[80, 80, 81], '80.33', 'Passed'],
+    [[99, 96, 97], '97.33', 'Passed'],
+    [[0, 75, 75], '50.00', 'Failed'],
     [[80, 90, null], '—', 'Incomplete'],
     [[80, 90, undefined], '—', 'Incomplete'],
     [[80, 90, '90'], '—', 'Incomplete'],
@@ -811,4 +812,35 @@ test('activity creation requires both a nonblank name and maximum points', async
   inputs[1].value = '50';
   await form.events.submit({ preventDefault() {} });
   assert.equal(writes, 1);
+});
+
+test('class pagination shows eight of forty students and saves edits across pages', async () => {
+  const data = { gradeStatus: 'draft', gradeVersion: 0,
+    activities: [{ _id: 'a', term: 1, category: 'writtenOral', title: 'Quiz', maxScore: 100 }],
+    roster: Array.from({ length: 40 }, (_, i) => ({ studentId: String(i), lastName: 'Student' + String(i).padStart(2, '0'), firstName: 'A', activityScores: {} })) };
+  let saved;
+  const { root, browser } = fixture(async (url, options) => {
+    if (options?.method === 'PUT') { saved = JSON.parse(options.body); return { gradeVersion: 1 }; }
+    return data;
+  });
+  await browser.show();
+  findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
+  await flush();
+  const body = byId(root, 'class-grades-tbody');
+  assert.equal(body.children.filter((row) => !row.hidden).length, 8);
+  assert.match(byId(root, 'class-roster-page').textContent, /Page 1 of 5/);
+  const input = (index) => findAll(body.children[index], (node) => node.tag === 'input')[0];
+  input(0).value = '80'; input(0).events.input();
+  byId(root, 'class-roster-next').events.click();
+  assert.equal(body.children[0].hidden, true);
+  assert.equal(body.children[8].hidden, false);
+  input(8).value = '90'; input(8).events.input();
+  byId(root, 'class-roster-prev').events.click();
+  assert.equal(input(0).value, '80');
+  await byId(root, 'save-activity-scores').events.click();
+  assert.equal(saved.grades.length, 2);
+  assert.equal(saved.grades.find((row) => row.studentId === '8').scores.a, 90);
+  for (let i = 0; i < 4; i++) byId(root, 'class-roster-next').events.click();
+  assert.match(byId(root, 'class-roster-page').textContent, /Page 5 of 5/);
+  assert.equal(byId(root, 'class-roster-next').disabled, true);
 });
