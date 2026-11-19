@@ -41,20 +41,28 @@ document.addEventListener('DOMContentLoaded', function () {
       )
     }));
   }
+  function lockedGrades() {
+    if (data?.canEditGrades === undefined) return data?.gradeStatus === 'finalized';
+    return !data.canEditGrades || Boolean(data.gradingDeadline && Date.now() >= new Date(data.gradingDeadline).getTime() && !data.isSubjectHead && !data.editPermissionGranted);
+  }
+  function canRequestEdit() {
+    return data?.canRequestEdit || Boolean(lockedGrades() && data?.subjectHeadAssigned && !data?.isSubjectHead && !data?.editPermissionGranted);
+  }
   function controls() {
-    const locked = data?.gradeStatus === 'finalized',
+    const locked = lockedGrades(),
       pending = data?.requests?.some((r) => r.status === 'pending');
     el('save-btn').disabled = busy || !data?.roster.length || locked || stale;
     el('finalize-btn').hidden = Boolean(locked);
     el('finalize-btn').disabled =
       busy ||
       !data?.roster.length ||
+      data?.gradeStatus === 'finalized' ||
       dirty ||
       stale ||
       entries().some((e) => weighted(e.scores) === null) ||
       Boolean(document.querySelector('.state-error'));
-    el('request-edit-btn').hidden = !locked;
-    el('request-edit-btn').disabled = busy || pending || !data?.canRequestEdit || stale;
+    el('request-edit-btn').hidden = !canRequestEdit();
+    el('request-edit-btn').disabled = busy || pending || !canRequestEdit() || stale;
     el('subject-summary-btn').disabled = busy || !data;
     el('refresh-grades').disabled = busy;
     select.disabled = busy || !select.options.length;
@@ -73,6 +81,18 @@ document.addEventListener('DOMContentLoaded', function () {
     UI.status('grade-status', 'Loading grades…');
     try {
       data = await UI.api('/teacher/subjects/' + id + '/roster');
+      if (data.gradingDeadline && window.setTimeout && !lockedGrades() && !data.isSubjectHead && !data.editPermissionGranted) {
+        const record = data;
+        const check = () => {
+          if (data !== record) return;
+          const remaining = new Date(record.gradingDeadline).getTime() - Date.now();
+          if (remaining > 0) { window.setTimeout(check, Math.min(remaining + 10, 2147483647)); return; }
+          controls();
+          el('grade-state').textContent = 'Deadline passed - Locked';
+          el('grade-state-note').textContent = 'Request approval from your subject head to edit grades.';
+        };
+        check();
+      }
       dirty = false;
       el('page-subtitle').textContent =
         data.subjectName +
@@ -81,11 +101,11 @@ document.addEventListener('DOMContentLoaded', function () {
         ' (' +
         data.totalStudents +
         ' students)';
-      const locked = data.gradeStatus === 'finalized';
-      el('grade-state').textContent = locked ? 'Finalized · Locked' : 'Draft · Editable';
+      const locked = lockedGrades();
+      el('grade-state').textContent = locked ? 'Deadline passed - Locked' : (data.gradeStatus === 'finalized' ? 'Finalized - Editable' : 'Draft - Editable');
       el('grade-state').className = 'workflow-badge ' + (locked ? 'finalized' : 'draft');
       el('grade-state-note').textContent = locked
-        ? 'Corrections require approval from ' + (data.adviserName || 'the class adviser') + '.'
+        ? 'Corrections require approval from ' + ('the subject head') + '.'
         : 'Save and review scores before finalizing. Reopened subjects must be finalized again.';
       const history = el('grade-request-history');
       history.replaceChildren();
@@ -177,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
   el('save-btn').addEventListener('click', async () => {
-    if (!data || busy || stale || data.gradeStatus === 'finalized') return;
+    if (!data || busy || stale || lockedGrades()) return;
     if (document.querySelector('.state-error')) {
       UI.status('grade-status', 'Fix invalid scores before saving.', true);
       return;
@@ -217,14 +237,14 @@ document.addEventListener('DOMContentLoaded', function () {
         data.subjectName +
         ' for all ' +
         data.totalStudents +
-        ' enrolled students? Grades will be locked. Only the class adviser can approve reopening.'
+        ' enrolled students? Later edits return grades to draft. Subject deadlines still apply.'
       : 'Explain the correction needed. The request goes to ' +
-        (data.adviserName || 'the class adviser') +
+        ('the subject head') +
         '. Grades remain locked until approved.';
     el('grade-reason-label').hidden = finalize;
     el('grade-reason').required = !finalize;
     el('grade-reason').value = '';
-    el('confirm-grade-action').textContent = finalize ? 'Finalize and lock' : 'Send request';
+    el('confirm-grade-action').textContent = finalize ? 'Finalize grades' : 'Send request';
     UI.status('grade-action-status', '');
     el('grade-action-dialog').showModal();
   }
@@ -310,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function () {
       await loadRoster(select.value);
       if (data && location.hash === '#finalization') {
         el('grade-state-note').scrollIntoView({ block: 'center' });
-        const button = el(data.gradeStatus === 'finalized' ? 'request-edit-btn' : 'finalize-btn');
+        const button = el(lockedGrades() ? 'request-edit-btn' : 'finalize-btn');
         if (!button.disabled) button.focus({ preventScroll: true });
       }
     } catch (error) {

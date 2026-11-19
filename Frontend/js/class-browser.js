@@ -51,6 +51,26 @@ window.ClassBrowser = (function () {
         event.returnValue = '';
       }
     });
+    let reminder, replayNavigation = false;
+    function remindBeforeLeaving(leave) {
+      if (!scoreDrafts.size) { leave(); return; }
+      if (!reminder) {
+        reminder = UI.node('dialog', undefined, 'workflow-dialog grade-save-reminder');
+        reminder.setAttribute('aria-label', 'Unsaved grades');
+        document.body.appendChild(reminder);
+      }
+      reminder.replaceChildren(UI.node('h2', 'Please save your grades'), UI.node('p', 'You have unsaved scores. Click Keep editing, then Save scores before leaving this class.'));
+      const actions = UI.node('div', undefined, 'workflow-toolbar');
+      actions.append(UI.button('Keep editing', () => reminder.close()), UI.button('Leave without saving', () => { reminder.close(); leave(); }));
+      reminder.appendChild(actions); reminder.showModal();
+    }
+    document.addEventListener?.('click', (event) => {
+      if (replayNavigation || !scoreDrafts.size || root.closest?.('[hidden]')) return;
+      const link = event.target.closest?.('a[href], #logout-btn');
+      if (!link || root.contains(link)) return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      remindBeforeLeaving(() => { replayNavigation = true; link.click(); replayNavigation = false; });
+    }, true);
     const overview = UI.node('div'),
       detail = UI.node('div');
     const status = UI.node('p', '', 'workflow-status');
@@ -227,11 +247,24 @@ window.ClassBrowser = (function () {
       overview.hidden = true;
       detail.hidden = false;
       detail.replaceChildren();
+      const deadlinePassed = () => Boolean(data?.gradingDeadline && Date.now() >= new Date(data.gradingDeadline).getTime());
+      const gradesLocked = () => data?.canEditGrades === undefined ? data?.gradeStatus === 'finalized'
+        : !data.canEditGrades || (deadlinePassed() && !data.isSubjectHead && !data.editPermissionGranted);
+      function scheduleDeadline() {
+        if (!window.setTimeout || !data?.gradingDeadline || data.isSubjectHead || data.editPermissionGranted || deadlinePassed()) return;
+        const delay = Math.min(2147483647, Math.max(1, new Date(data.gradingDeadline).getTime() - Date.now() + 10));
+        window.setTimeout(function checkDeadline() {
+          if (request !== version) return;
+          if (saving) { window.setTimeout(checkDeadline, 500); return; }
+          if (deadlinePassed()) { dialog.close(); render(); }
+          else scheduleDeadline();
+        }, delay);
+      }
       let scoreInputs = [];
       let rosterPage = 1;
       const rosterPageSize = 8;
       const toolbar = UI.node('div', undefined, 'workflow-toolbar');
-      const back = UI.button('', show);
+      const back = UI.button('', () => remindBeforeLeaving(show));
       back.className += ' class-back-button';
       back.setAttribute('aria-label', 'Back to subjects');
       back.title = 'Back to subjects';
@@ -251,9 +284,26 @@ window.ClassBrowser = (function () {
       manage.disabled = true;
       const toolbarActions = UI.node('div', undefined, 'class-toolbar-actions');
       toolbarActions.append(manage, label);
+      const requestEdit = UI.button('Request grade edit', async () => {
+        const reason = window.prompt('Explain why you need to edit grades after the deadline:');
+        if (!reason?.trim()) return;
+        requestEdit.disabled = true;
+        try {
+          await UI.api('/teacher/subjects/' + encodeURIComponent(subject._id) + '/edit-requests', {
+            method: 'POST', body: JSON.stringify({ version: data.gradeVersion || 0, reason: reason.trim() })
+          });
+          await openSubject(subject);
+          message('Edit request sent to your subject head.');
+        } catch (error) { message(error.message, true); requestEdit.disabled = false; }
+      });
+      requestEdit.hidden = true;
+      toolbarActions.appendChild(requestEdit);
+      const deadlineNote = UI.node('p', '', 'workflow-status');
+      detail.appendChild(deadlineNote);
+
       const finalizeButton = UI.button('Finalize grades', async () => {
         if (finalizeButton.disabled || saving) return;
-        if (!window.confirm('Finalize and lock all three terms for this subject? Further changes will require reopening by the class adviser.')) return;
+        if (!window.confirm('Finalize all three terms for this subject? Later edits will return it to draft; deadlines still apply.')) return;
         saving = true;
         finalizeButton.disabled = true;
         select.disabled = back.disabled = true;
@@ -402,7 +452,7 @@ window.ClassBrowser = (function () {
           commit.hidden = !key;
         }
         categorySelect.addEventListener('change', () => showCategory(categorySelect.value));
-        const locked = data.gradeStatus === 'finalized';
+        const locked = gradesLocked();
         categories.forEach(([key, label]) => {
           const activities = (data.activities || []).filter(
             (item) => item.term === Number(select.value) && item.category === key
@@ -613,6 +663,7 @@ window.ClassBrowser = (function () {
               if (request !== version) return;
               data.activities = result.activities;
               data.gradeVersion = result.gradeVersion;
+              data.gradeStatus = 'draft';
               if (!change.deleted && change.wsPercentage !== undefined &&
                   data.activities.find((activity) => activity._id === change.id)?.wsPercentage !== change.wsPercentage)
                 throw new Error('The server did not save the WS Percentage. Restart the backend with the latest code, then save again.');
@@ -634,6 +685,7 @@ window.ClassBrowser = (function () {
               if (request !== version) return;
               data.activities = result.activities;
               data.gradeVersion = result.gradeVersion;
+              data.gradeStatus = 'draft';
               completed++;
             }
             dialog.close();
@@ -668,7 +720,7 @@ window.ClassBrowser = (function () {
         titleInput.focus();
       }
       function editActivity(activity) {
-        if (saving || data.gradeStatus === 'finalized') return;
+        if (saving || gradesLocked()) return;
         editingActivity = activity;
         titleInput.value = activity.title;
         maxInput.value = activity.maxScore;
@@ -681,7 +733,7 @@ window.ClassBrowser = (function () {
         showEditor();
       }
       function addActivity(category, label, count) {
-        if (saving || data.gradeStatus === 'finalized') return;
+        if (saving || gradesLocked()) return;
         editingActivity = null;
         remove.hidden = true;
         save.textContent = 'Add activity';
@@ -756,6 +808,7 @@ window.ClassBrowser = (function () {
           if (request !== version) return;
           data.activities = result.activities;
           data.gradeVersion = result.gradeVersion;
+          data.gradeStatus = 'draft';
           if (deleting) {
             for (const key of scoreDrafts.keys()) {
               if (key.startsWith(subject._id + ':') && key.endsWith(':' + editingActivity._id))
@@ -797,11 +850,11 @@ window.ClassBrowser = (function () {
         const dirty = scoreInputs.some((field) => scoreDrafts.has(field.key));
         const unsaved = [...scoreDrafts.keys()].some((key) => key.startsWith(subject._id + ':'));
         const complete = data?.roster?.length > 0 && data.roster.every((student) => finalAverage(calculatedTerms(student)) !== null);
-        finalizeButton.hidden = select.value !== '4';
+        finalizeButton.hidden = false;
         finalizeButton.textContent = data?.gradeStatus === 'finalized' ? 'Grades finalized' : 'Finalize grades';
-        finalizeButton.disabled = saving || unsaved || !complete || data?.gradeStatus === 'finalized' || !data?.canRequestEdit;
-        finalizeButton.title = unsaved ? 'Save scores in every term first.' : !complete ? 'Complete all three terms for every learner first.' : !data?.canRequestEdit ? 'A class adviser must be assigned first.' : 'Finalize and lock this subject for final reports.';
-        saveScores.disabled = saving || data?.gradeStatus === 'finalized' || !dirty || invalid;
+        finalizeButton.disabled = saving || unsaved || !complete || data?.gradeStatus === 'finalized' || !(data?.canFinalize ?? data?.canRequestEdit);
+        finalizeButton.title = unsaved ? 'Save scores in every term first.' : !complete ? 'Complete all three terms for every learner first.' : !(data?.canFinalize ?? data?.canRequestEdit) ? 'A class adviser must be assigned first.' : 'Confirm saved grades for final reports. Editing later returns them to Draft.';
+        saveScores.disabled = saving || gradesLocked() || !dirty || invalid;
         scoreStatus.textContent = invalid
           ? 'Fix the highlighted scores before saving.'
           : dirty
@@ -905,7 +958,7 @@ window.ClassBrowser = (function () {
           step: 'any',
           value: draft ? draft.raw : original === null ? '' : String(original),
           placeholder: '\u2014',
-          disabled: data.gradeStatus === 'finalized'
+          disabled: gradesLocked()
         });
         input.setAttribute(
           'aria-label',
@@ -941,7 +994,7 @@ window.ClassBrowser = (function () {
       async function saveActivityScores() {
         if (
           saving ||
-          data.gradeStatus === 'finalized' ||
+          gradesLocked() ||
           scoreInputs.some((field) => field.invalid)
         )
           return;
@@ -978,6 +1031,7 @@ window.ClassBrowser = (function () {
           );
           if (request !== version) return;
           data.gradeVersion = result.gradeVersion;
+          data.gradeStatus = 'draft';
           changed.forEach((field) => {
             field.student.activityScores ||= {};
             field.student.activityScores[field.activity._id] = entries.get(
@@ -992,24 +1046,30 @@ window.ClassBrowser = (function () {
             scoreStatus.textContent = 'Could not save scores: ' + error.message;
         } finally {
           saving = false;
-          select.disabled = back.disabled = manage.disabled = false;
+          select.disabled = back.disabled = false;
+          manage.disabled = gradesLocked();
           scoreInputs.forEach((field) => {
-            field.input.disabled = data.gradeStatus === 'finalized';
+            field.input.disabled = gradesLocked();
           });
           saveScores.disabled =
-            data.gradeStatus === 'finalized' ||
+            gradesLocked() ||
             !scoreInputs.some((field) => scoreDrafts.has(field.key)) ||
             scoreInputs.some((field) => field.invalid);
         }
       }
       function render() {
+        requestEdit.hidden = !(data.canRequestEdit || (deadlinePassed() && data.subjectHeadAssigned && !data.isSubjectHead && !data.editPermissionGranted));
+        requestEdit.disabled = data.requests?.some((item) => item.status === 'pending') || false;
+        deadlineNote.hidden = data.canEditGrades === undefined;
+        deadlineNote.textContent = data.gradingDeadline ? 'Grading deadline: ' + new Date(data.gradingDeadline).toLocaleString() + (gradesLocked() ? '. Grades are locked; request approval from your subject head.' : data.isSubjectHead ? '. Subject head: you may edit your assigned grades anytime.' : '. Grade editing is available.') : 'No grading deadline has been set.';
+
         content.replaceChildren();
         scoreInputs = [];
         summaryUpdates = [];
         const final = select.value === '4';
         scoreTools.hidden = final;
         manage.hidden = final;
-        manage.disabled = false;
+        manage.disabled = gradesLocked();
         const groups = categories.map(([key, label]) => {
           const activities = (data.activities || []).filter(
             (activity) => activity.term === Number(select.value) && activity.category === key
@@ -1021,7 +1081,7 @@ window.ClassBrowser = (function () {
             examination: key === 'examination',
             maximum: activities.reduce((sum, activity) => sum + activity.maxScore, 0),
             weight: categoryWeights[key] ?? null,
-            locked: data.gradeStatus === 'finalized',
+            locked: gradesLocked(),
             add: () => addActivity(key, label, activities.length)
           };
         });
@@ -1036,7 +1096,7 @@ window.ClassBrowser = (function () {
           notice.appendChild(UI.node('p', 'Examination WS and PS need a WS Percentage for: ' +
             missingWeights.map((activity) => activity.title).join(', ') +
             '. Maximum points and WS Percentage are separate settings.'));
-          if (data.gradeStatus !== 'finalized')
+          if (!gradesLocked())
             notice.appendChild(UI.button('Set examination percentages', () => manageColumns('examination')));
           content.appendChild(notice);
         }
@@ -1147,6 +1207,7 @@ window.ClassBrowser = (function () {
         if (request !== version) return;
         data = result;
         render();
+        scheduleDeadline();
         select.disabled = false;
         message();
       } catch (error) {

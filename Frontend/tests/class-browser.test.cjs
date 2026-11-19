@@ -76,7 +76,7 @@ function fixture(api) {
   const context = {
     window: {},
     Node: Element,
-    document: { createElement: (tag) => new Element(tag) },
+    document: { body: new Element('body'), createElement: (tag) => new Element(tag) },
     Option: function (text, value) {
       const el = new Element('option', text);
       el.value = value;
@@ -755,7 +755,7 @@ test('Final Grades exposes finalization only for complete saved terms and locks 
   findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
   await flush();
   const button = byId(root, 'finalize-activity-grades');
-  assert.equal(button.hidden, true);
+  assert.equal(button.hidden, false);
   const select = byId(root, 'class-term-select');
   select.value = '4'; select.events.change();
   assert.equal(button.hidden, false);
@@ -843,4 +843,51 @@ test('class pagination shows eight of forty students and saves edits across page
   for (let i = 0; i < 4; i++) byId(root, 'class-roster-next').events.click();
   assert.match(byId(root, 'class-roster-page').textContent, /Page 5 of 5/);
   assert.equal(byId(root, 'class-roster-next').disabled, true);
+});
+
+test('open gradebook locks at the deadline and shows requests only for non-head teachers', async () => {
+  let now = Date.parse('2030-01-01T00:00:00Z'), callback;
+  const data = { canEditGrades: true, canRequestEdit: false, subjectHeadAssigned: true,
+    gradingDeadline: '2030-01-01T00:00:01Z', gradeStatus: 'draft', gradeVersion: 0,
+    activities: [{ _id: 'a', term: 1, category: 'writtenOral', title: 'Quiz', maxScore: 100 }],
+    roster: [{ studentId: 's', firstName: 'Ben', lastName: 'Alba', activityScores: {} }] };
+  const { root, browser, context } = fixture(async () => data);
+  context.Date = class extends Date { static now() { return now; } };
+  context.window.setTimeout = (fn) => { callback = fn; };
+  await browser.show();
+  findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
+  await flush();
+  const request = () => findAll(root, (node) => node.tag === 'button' && node.textContent === 'Request grade edit')[0];
+  const input = () => findAll(root, (node) => node.className === 'activity-score-input')[0];
+  assert.equal(request().hidden, true);
+  assert.equal(input().disabled, false);
+  now += 2000; callback();
+  assert.equal(input().disabled, true);
+  assert.equal(request().hidden, false);
+  data.isSubjectHead = true;
+  byId(root, 'class-term-select').events.change();
+  assert.equal(input().disabled, false);
+  assert.equal(request().hidden, true);
+});
+
+
+test('leaving a class with unsaved scores opens a reminder and Keep editing preserves inputs', async () => {
+  const data = { gradeStatus: 'draft', canEditGrades: true, gradeVersion: 0,
+    activities: [{ _id: 'w1', term: 1, category: 'writtenOral', title: 'Work', maxScore: 100 }],
+    roster: [{ studentId: 'learner', firstName: 'Ben', lastName: 'Alba', activityScores: {} }] };
+  const { root, browser, context } = fixture(async () => data);
+  await browser.show();
+  findAll(root, (node) => node.tag === 'a')[0].events.click({ preventDefault() {} });
+  await flush();
+  const input = findAll(root, (node) => node.className === 'activity-score-input')[0];
+  input.value = '88'; input.events.input();
+  const back = findAll(root, (node) => node.tag === 'button' && node.children.some((child) => child.className === 'bi bi-arrow-left-square'))[0];
+  back.events.click();
+  const reminder = context.document.body.children[0];
+  assert.equal(reminder.open, true);
+  assert.match(reminder.textContent, /Please save your grades/);
+  findAll(reminder, (node) => node.textContent === 'Keep editing')[0].events.click();
+  assert.equal(reminder.open, false);
+  assert.equal(input.value, '88');
+  assert.equal(byId(root, 'save-activity-scores').disabled, false);
 });

@@ -1,11 +1,13 @@
 .section-subject-dialog {
+  box-sizing: border-box;
+  box-shadow: 0 24px 80px #12292b30;
   margin: auto;
   width: min(800px, calc(100vw - 32px));
-  max-height: 90vh;
+  max-height: min(720px, 85dvh);
   overflow: auto;
   padding: 24px;
   border: 1px solid #e4ded2;
-  border-radius: 12px;
+  border-radius: 16px;
   color: #1a231f;
   font:
     14px 'Inter',
@@ -98,6 +100,10 @@
   font: inherit;
 }
 .section-subject-dialog button {
+  min-height: 42px;
+  padding: 10px 16px;
+  font-weight: 600;
+  transition: background .15s, border-color .15s;
   border: 1px solid #d9d4c8;
   border-radius: 6px;
   background: #fff;
@@ -107,7 +113,7 @@
 }
 .section-subject-dialog button:disabled {
   opacity: 0.5;
-  cursor: wait;
+  cursor: not-allowed;
 }
 .section-subject-dialog [data-close] {
   display: inline-flex;
@@ -139,6 +145,10 @@
 .section-subject-actions {
   grid-column: 1 / -1;
   display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  padding-top: 16px;
+  border-top: 1px solid #e4ded2;
   gap: 12px;
 }
 @media (max-width: 600px) {
@@ -146,3 +156,12 @@
     grid-template-columns: 1fr;
   }
 }
+
+.section-subject-dialog input, .section-subject-dialog select { box-sizing: border-box; min-height: 42px; background: #fff; color: #1a231f; }
+.section-subject-dialog label { font-size: 13px; font-weight: 500; color: #68746d; }
+.section-subject-dialog button:hover:not(:disabled) { background: #edf2ee; border-color: #879b8f; }
+.section-subject-dialog [data-save]:hover:not(:disabled) { background: #1d3b30; border-color: #1d3b30; }
+.section-subject-dialog :is(button, input, select):focus-visible { outline: 2px solid #bd791f; outline-offset: 3px; }
+.section-subject-dialog td:last-child, .section-subject-dialog th:last-child { text-align: right; }
+.section-subject-dialog form { padding: 18px; background: #faf9f6; border: 1px solid #e4ded2; border-radius: 10px; }
+@media (max-width: 600px) { .section-subject-dialog { padding: 18px; } .section-subject-dialog form { padding: 14px; } }

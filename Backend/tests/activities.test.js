@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+const { test, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const User = require('../models/User');
@@ -6,6 +6,14 @@ const Subject = require('../models/Subject');
 const Audit = require('../models/AcademicAudit');
 const Grade = require('../models/Grade');
 const { addActivity } = require('../services/academic');
+
+let deadlinePassed = false;
+beforeEach((t) => {
+  deadlinePassed = false;
+  const Leadership = require('../models/SubjectLeadership');
+  t.mock.method(Leadership, 'findOne', () => ({ session: async () => deadlinePassed ? { _id: 'policy', head: 'otherHead', revision: 1, deadline: new Date(0) } : null }));
+  t.mock.method(Leadership, 'updateOne', async () => {});
+});
 
 test('activity creation saves term-specific columns and enforces ownership, locks, versions and limits', async (t) => {
   const actor = { role: 'teacher', userId: 'teacher1' };
@@ -53,9 +61,9 @@ test('activity creation saves term-specific columns and enforces ownership, lock
       status: 400
     });
   }
-  record.gradeStatus = 'finalized';
+  deadlinePassed = true;
   await assert.rejects(addActivity(actor, id, { ...input, version: 1 }), { status: 409 });
-  record.gradeStatus = 'draft';
+  deadlinePassed = false;
   record.teacher = 'other';
   await assert.rejects(addActivity(actor, id, { ...input, version: 1 }), { status: 403 });
   assert.equal(audits, 1);
@@ -93,11 +101,11 @@ test('activity editing and deletion persist with version and ownership checks', 
   await assert.rejects(changeActivity(actor, id, activityId, { version: 0 }, true), {
     status: 409
   });
-  record.gradeStatus = 'finalized';
+  deadlinePassed = true;
   await assert.rejects(changeActivity(actor, id, activityId, { version: 1 }, true), {
     status: 409
   });
-  record.gradeStatus = 'draft';
+  deadlinePassed = false;
   record.teacher = 'other';
   await assert.rejects(changeActivity(actor, id, activityId, { version: 1 }, true), {
     status: 403
@@ -154,9 +162,9 @@ test('reordering preserves activity IDs and isolates terms/categories while enfo
   record.teacher = 'someone-else';
   await assert.rejects(reorderActivities(actor, id, body), { status: 403 });
   record.teacher = actor.userId;
-  record.gradeStatus = 'finalized';
+  deadlinePassed = true;
   await assert.rejects(reorderActivities(actor, id, body), { status: 409 });
-  record.gradeStatus = 'draft';
+  deadlinePassed = false;
   const result = await reorderActivities(actor, id, body);
   assert.deepEqual(result.activities.map((activity) => String(activity._id)), [ids[2], ids[1], ids[0], ids[3]]);
   assert.deepEqual(result.activities.map((activity) => activity.maxScore), [100, 100, 50, 50]);
@@ -237,7 +245,7 @@ test('saving scores validates before writing, uses versions, and preserves unrel
     $set: { updatedBy: actor.userId, ['activityScores.' + activityId]: 50 }
   });
   await assert.rejects(saveActivityScores(actor, id, input(30)), { status: 409 });
-  record.gradeStatus = 'finalized';
+  deadlinePassed = true;
   await assert.rejects(saveActivityScores(actor, id, { ...input(30), version: 1 }), {
     status: 409
   });

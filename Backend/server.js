@@ -482,6 +482,7 @@ app.post('/admin/teachers', verifyToken, requireRole('admin'), async (req, res) 
 app.use('/admin/teachers', require('./routes/teacher-roles'));
 app.use('/admin/clear-data', require('./routes/clear-data'));
 app.use('/admin/history', require('./routes/admin-history'));
+app.use('/subject-leadership', require('./routes/subject-leadership'));
 
 // Toggle a teacher's active/deactivated status
 app.patch('/admin/teachers/:id/deactivate', verifyToken, requireRole('admin'), async (req, res) => {

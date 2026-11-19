@@ -31,6 +31,11 @@ test('activity grades flow through completeness, finalization and final reports'
     for (const method of ['session', 'lean', 'populate', 'select', 'sort']) q[method] = () => q;
     return q;
   }
+  t.mock.method(require('../models/SubjectLeadership'), 'findOne', () => query(null));
+  t.mock.method(require('../models/Attendance'), 'find', () => query([1,2,3].map((term) => ({ student: studentId, subject: id, term, date: '2026-01-0' + term, status: 'present' }))));
+  t.mock.method(require('../models/NarrativeReport'), 'find', () => query([1,2,3].map((term) => ({ student: studentId, subject: id, term, canDo: 'Reads', improving: 'Writes' }))));
+  const catalog = require('../../Frontend/js/core-values');
+  t.mock.method(require('../models/CoreValueReport'), 'find', () => query([1,2,3].flatMap((term) => ['filipino','personal'].map((category) => ({ student: studentId, subject: id, term, category, ratings: Object.fromEntries(catalog[category].items.map(([key]) => [key, 'AO'])) })))));
   t.mock.method(mongoose.connection, 'transaction', async (callback) => callback(null));
   t.mock.method(User, 'findOne', () => query({}));
   t.mock.method(User, 'findById', () => query({ username: 'Adviser' }));

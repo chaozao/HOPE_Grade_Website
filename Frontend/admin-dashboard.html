@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="css/section-subjects.css" />
     <link rel="stylesheet" href="css/admin-history.css" />
     <link rel="stylesheet" href="css/profile-photo.css" />
+    <link rel="stylesheet" href="css/subject-leadership.css" />
   </head>
   <body>
     <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
@@ -81,6 +82,7 @@
               <p class="content-subtitle">Manage teacher accounts, advisories, and access.</p>
             </div>
             <div class="teacher-actions">
+              <button type="button" class="btn-clear-data" id="clear-school-data">Clear School Data</button>
               <button class="btn-secondary" id="open-assign-roles">
                 <i class="bi bi-person-check"></i>
                 Assign Roles
@@ -127,7 +129,7 @@
             <div class="teacher-actions">
               <button type="button" class="btn-clear-data" id="clear-all-classes" disabled>
                 <i class="bi bi-trash3" aria-hidden="true"></i>
-                Clear All Data
+                Clear All Listed Data
               </button>
               <button class="btn-primary" id="open-add-class">
                 <i class="bi bi-plus-lg"></i>
@@ -184,7 +186,7 @@
             <div class="teacher-actions">
               <button type="button" class="btn-clear-data" id="clear-all-subjects" disabled>
                 <i class="bi bi-trash3" aria-hidden="true"></i>
-                Clear All Data
+                Clear All Listed Data
               </button>
               <button class="btn-primary" id="open-add-subject">
                 <i class="bi bi-plus-lg"></i>
@@ -526,6 +528,7 @@
 
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/subject-leadership.js"></script>
     <script src="js/profile-photo.js"></script>
     <script src="js/sidebar-toggle.js"></script>
     <script src="js/academic-ui.js"></script>

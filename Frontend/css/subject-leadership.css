@@ -1,0 +1,45 @@
+.leadership-dialog {
+  margin: auto; position: fixed; inset: 0; box-sizing: border-box;
+  width: min(760px, calc(100vw - 32px)); max-height: min(720px, 85dvh);
+  padding: 28px; border: 1px solid #e4ded2; border-radius: 16px; overflow: auto;
+  background: #fff; color: #1a231f; font: 14px/1.5 'Inter', sans-serif;
+  box-shadow: 0 24px 80px #12292b30;
+}
+.leadership-dialog::backdrop { background: #12292b88; }
+.leadership-dialog h2 { margin: 0 0 8px; font-size: 22px; line-height: 1.3; }
+.leadership-dialog > p { color: #68746d; margin: 0 0 22px; }
+.leadership-row { margin: 12px 0; padding: 18px; border: 1px solid #e4ded2; border-radius: 10px; background: #faf9f6; }
+form.leadership-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; align-items: end; }
+.leadership-row h3 { grid-column: 1 / -1; margin: 0; font-size: 16px; font-weight: 600; }
+.leadership-row p { grid-column: 1 / -1; margin: 0; color: #68746d; font-size: 12px; }
+.leadership-row label { display: flex; flex-direction: column; gap: 6px; color: #68746d; font-size: 12px; min-width: 0; }
+.leadership-row input, .leadership-row select, .leadership-row textarea {
+  box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; padding: 10px 12px;
+  font: 14px/1.4 'Inter', sans-serif; color: #1a231f; background: #fff; border: 1px solid #d9d4c8; border-radius: 8px;
+}
+.leadership-dialog button {
+  min-height: 42px; padding: 10px 18px; margin: 0; border: 1px solid #d9d4c8;
+  border-radius: 8px; background: #fff; color: #294b3f; font: 600 14px/1.4 'Inter', sans-serif;
+  cursor: pointer; transition: background .15s, border-color .15s;
+}
+.leadership-dialog button:hover:not(:disabled) { background: #edf2ee; border-color: #879b8f; }
+.leadership-dialog button[type=submit] { background: #294b3f; border-color: #294b3f; color: #fff; }
+.leadership-dialog button[type=submit]:hover:not(:disabled) { background: #1d3b30; }
+.leadership-dialog button:disabled { opacity: .5; cursor: not-allowed; }
+.leadership-dialog :is(button, input, select, textarea):focus-visible { outline: 2px solid #bd791f; outline-offset: 3px; }
+.leadership-footer { display: flex; justify-content: flex-end; margin-top: 22px; padding-top: 18px; border-top: 1px solid #e4ded2; }
+.leadership-row > button + button { margin-left: 8px; }
+@media (max-width: 520px) {
+  .leadership-dialog { padding: 18px; }
+  form.leadership-row { grid-template-columns: minmax(0, 1fr); padding: 14px; }
+  .leadership-row button[type=submit] { justify-self: end; }
+}
+
+.leadership-footer { gap: 10px; }
+.leadership-dialog .leadership-save { background: #294b3f; border-color: #294b3f; color: #fff; }
+.leadership-dialog .leadership-save:hover:not(:disabled) { background: #1d3b30; }
+.leadership-row select {
+  appearance: none; padding-right: 42px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%235a7066' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center; background-size: 16px;
+}

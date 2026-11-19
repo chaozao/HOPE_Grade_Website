@@ -244,12 +244,19 @@ document.addEventListener('DOMContentLoaded', function () {
       print.disabled = !student.readyForReport;
       const action = UI.node('div');
       action.appendChild(print);
-      if (!student.readyForReport)
-        action.appendChild(
-          UI.node('span', student.subjects.some((subject) => subject.grade === null)
-            ? 'Complete and save all three terms, then finalize each subject.'
-            : 'Grades complete. Each subject teacher must finalize their subject in Class → Final Grades.', 'workflow-detail')
-        );
+      if (!student.readyForReport) {
+        const missing = [...(student.reportMissing || [])];
+        for (const subject of student.subjects) {
+          if (subject.grade === null) missing.push(subject.name + ': complete and save all three term grades.');
+          else if (subject.status !== 'finalized') missing.push(subject.name + ': open Class, select this subject, then click Finalize grades after saving all three terms.');
+        }
+        const requirements = UI.node('details', undefined, 'sf9-requirements');
+        requirements.open = true;
+        requirements.appendChild(UI.node('summary', 'SF9 requirements (' + missing.length + ' remaining)'));
+        const list = UI.node('ul');
+        missing.forEach((message) => list.appendChild(UI.node('li', message)));
+        requirements.appendChild(list); action.appendChild(requirements);
+      }
       UI.row(students, [student.lrn || 'Not recorded', name, list, action]);
     });
     if (!data.students.length) UI.empty(students, 'No students in your advisory class.', 4);
@@ -308,7 +315,7 @@ document.addEventListener('DOMContentLoaded', function () {
       ]);
     });
     if (!requests.length)
-      UI.empty(tbody, 'No pending grade-edit requests for your advisory classes.', 5);
+      UI.empty(tbody, 'No pending grade-edit requests for subjects you head.', 5);
   }
   byId('cancel-review').addEventListener('click', () => {
     if (!saving) byId('review-dialog').close();
@@ -348,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
       );
       const review = UI.node(
         'div',
-        request.reviewNote || (request.status === 'pending' ? 'Awaiting class adviser' : 'Reviewed')
+        request.reviewNote || (request.status === 'pending' ? 'Awaiting subject head' : 'Reviewed')
       );
       review.appendChild(UI.node('span', request.reviewedBy?.username || '', 'workflow-detail'));
       const link = UI.node('a', 'Open gradebook', 'filter-btn');

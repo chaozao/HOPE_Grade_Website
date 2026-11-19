@@ -4,21 +4,19 @@
 //   <script src="js/signin.js"></script>
 
 function getToken() {
-  // sessionStorage first (unchecked "remember me"), then localStorage (checked).
-  return sessionStorage.getItem('token') || localStorage.getItem('token');
+  // Upgrade existing tab-only sessions to the shared browser session.
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  if (token && !localStorage.getItem('token')) localStorage.setItem('token', token);
+  sessionStorage.removeItem('token');
+  return token;
 }
 
-function saveToken(token, remember) {
+function saveToken(token) {
   sessionStorage.removeItem('workspace-hint');
-  // Only ever keep the token in ONE place at a time.
-  localStorage.removeItem('token');
   sessionStorage.removeItem('token');
-
-  if (remember) {
-    localStorage.setItem('token', token); // survives closing the browser
-  } else {
-    sessionStorage.setItem('token', token); // cleared when the tab/browser closes
-  }
+  // All tabs share storage; the server controls expiry through Remember me.
+  // Private browsing has separate storage managed by the browser.
+  localStorage.setItem('token', token);
 }
 
 function clearToken() {
@@ -26,6 +24,27 @@ function clearToken() {
   localStorage.removeItem('token');
   sessionStorage.removeItem('token');
 }
+
+function redirectSignedInUser() {
+  const token = getToken();
+  if (!token) return false;
+  const payload = getPayload(token);
+  if (!payload || (payload.exp && payload.exp * 1000 <= Date.now())) {
+    clearToken();
+    return false;
+  }
+  window.location.replace(payload.role === 'admin' ? 'admin-dashboard.html'
+    : payload.isAdviser ? 'class-advisor.html' : 'dashboard.html');
+  return true;
+}
+
+window.addEventListener('storage', function (event) {
+  if (event.storageArea !== localStorage || (event.key !== 'token' && event.key !== null)) return;
+  // Discard old tab state before reloading with the shared account (or logout).
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('workspace-hint');
+  window.location.replace('index.html');
+});
 
 // Checks a new password against the site's rules before it's even sent to
 // the server - the server enforces the same rule independently and is the

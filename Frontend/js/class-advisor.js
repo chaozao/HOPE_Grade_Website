@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let ready = false;
   const classBrowser = ClassBrowser.create(byId('class-browser'));
   byId('class-nav').hidden = !workspaceHint(token)?.teaching;
-  byId('student-reports-nav').hidden = !workspaceHint(token)?.teaching;
+  byId('student-reports-nav').hidden = false;
 
   function showStatus(id, message, isError) {
     const status = byId(id);
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let view = window.location.hash.slice(1) || 'dashboard';
     if (
       !['dashboard', 'homeroom', 'class', 'student-reports', 'requests', 'reports'].includes(view) ||
-      (['class', 'student-reports'].includes(view) && (!ready || !subjects.length))
+      (view === 'class' && (!ready || !subjects.length))
     ) {
       view = 'dashboard';
       // Keep a requested Class view pending until assignments have loaded.
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function renderTeaching(data, failed = false) {
     subjects = data;
     byId('class-nav').hidden = !subjects.length;
-    byId('student-reports-nav').hidden = !subjects.length;
+    byId('student-reports-nav').hidden = false;
     byId('my-requests-tab').hidden = !subjects.length;
     byId('assignments-note').hidden = !subjects.length;
     const assigned = byId('assigned-subjects-tbody');

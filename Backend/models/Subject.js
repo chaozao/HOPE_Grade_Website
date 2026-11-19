@@ -17,6 +17,10 @@ const subjectSchema = new mongoose.Schema(
     ],
     gradeStatus: { type: String, enum: ['draft', 'finalized'], default: 'draft' },
     gradeVersion: { type: Number, default: 0 },
+    editPermission: {
+      teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      policyRevision: Number
+    },
     workflowRevision: { type: Number, default: 0 },
     finalizedAt: { type: Date, default: null },
     finalizedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

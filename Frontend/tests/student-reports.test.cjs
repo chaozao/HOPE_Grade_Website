@@ -16,7 +16,7 @@ test('attendance cascades filters, sorts names, cycles marks and ignores stale r
   const elements = new Map();
   const el = (id) => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
   let start, resolveRoster;
-  const saved = [];
+  const saved = [], requested = [];
   let failSave = false;
   const subject = { _id: 's1', classId: 'c1', gradeLevel: '', gradeLevels: ['Grade 7'], section: 'Emerald', name: 'Physics' };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../js/student-reports.js'), 'utf8'), {
@@ -24,6 +24,7 @@ test('attendance cascades filters, sorts names, cycles marks and ignores stale r
     window: { addEventListener() {} }, location: { hash: '#student-reports' }, Option: Element,
     AcademicUI: {
       api: async (url, options) => {
+        requested.push(url);
         if (options?.method === 'PUT') {
           if (failSave) throw new Error('Offline');
           saved.push(JSON.parse(options.body));
@@ -36,6 +37,7 @@ test('attendance cascades filters, sorts names, cycles marks and ignores stale r
       row: (body, cells) => body.appendChild({ cells })
     }
   });
+  el('attendance-term').value = '1';
   start();
   await new Promise(setImmediate);
   const grade = el('attendance-grade'), section = el('attendance-section'), subjectSelect = el('attendance-subject');
@@ -84,6 +86,8 @@ test('attendance cascades filters, sorts names, cycles marks and ignores stale r
   resolveRoster({ roster: [{ studentId: '2', lastName: 'Alba', firstName: 'Ben', status: 'tardy' }] });
   await changeDate;
   assert.equal(el('attendance-students').children[0].cells[1].className, 'attendance-action is-tardy');
+  assert.ok(!requested.at(-1).includes('term='));
+  assert.equal(saved[0].term, undefined);
   const stale = subjectSelect.events.change();
   grade.value = ''; grade.events.change();
   assert.equal(section.disabled, true);

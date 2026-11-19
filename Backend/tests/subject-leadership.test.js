@@ -1,0 +1,36 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const User = require('../models/User');
+const Subject = require('../models/Subject');
+const Leadership = require('../models/SubjectLeadership');
+const Request = require('../models/GradeEditRequest');
+const router = require('../routes/subject-leadership');
+
+test('admin assigns subject heads; only that head sets deadlines for the named subject', async (t) => {
+  const adminId = '1'.repeat(24), headId = '2'.repeat(24), otherId = '3'.repeat(24);
+  const policy = { _id: 'policy', name: 'math', head: null, deadline: null, revision: 0, save: async () => {} };
+  let actor = { userId: adminId, role: 'admin' }, invalidations = 0;
+  t.mock.method(jwt, 'verify', () => actor);
+  t.mock.method(User, 'findById', async () => ({ role: actor.role, isActive: true }));
+  t.mock.method(User, 'findOne', () => ({ session: async () => ({ role: 'teacher', isActive: true }) }));
+  t.mock.method(Subject, 'find', () => ({ session: async () => [{ _id: 's1', name: 'Math' }, { _id: 's2', name: ' math ' }] }));
+  t.mock.method(Leadership, 'findOne', () => ({ session: async () => policy }));
+  t.mock.method(Request, 'updateMany', async (filter) => { assert.equal(filter.subject.$in.length, 2); invalidations++; });
+  t.mock.method(mongoose.connection, 'transaction', async (work) => work(null));
+  const app = express(); app.use(express.json(), router);
+  const server = app.listen(0, '127.0.0.1'); await new Promise((resolve) => server.once('listening', resolve));
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const put = (body) => fetch('http://127.0.0.1:' + server.address().port, { method: 'PUT', headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  assert.equal((await put({ name: 'Math', head: headId })).status, 200);
+  assert.equal(policy.head, headId);
+  actor = { userId: otherId, role: 'teacher' };
+  assert.equal((await put({ name: 'Math', deadline: '2026-11-10T00:00:00Z' })).status, 403);
+  actor = { userId: headId, role: 'teacher' };
+  assert.equal((await put({ name: 'Math', deadline: '2026-11-10T00:00:00Z' })).status, 200);
+  assert.equal(policy.deadline.toISOString(), '2026-11-10T00:00:00.000Z');
+  assert.equal((await put({ name: 'Math', deadline: '2026-11-10T00:00' })).status, 400);
+  assert.equal(invalidations, 2);
+});

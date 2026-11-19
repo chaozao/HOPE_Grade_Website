@@ -29,6 +29,7 @@ test('login teaching hint is available immediately and refreshed assignments tak
   const source = fs.readFileSync(path.resolve(__dirname, '../js/auth.js'), 'utf8');
   const values = new Map();
   const context = vm.createContext({
+    window: { addEventListener() {} },
     atob: (value) => Buffer.from(value, 'base64').toString(),
     sessionStorage: {
       getItem: (key) => values.get(key) || null,

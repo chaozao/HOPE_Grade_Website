@@ -6,6 +6,8 @@ const schema = new mongoose.Schema(
     requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     reason: { type: String, required: true, trim: true, maxlength: 1000 },
     gradeVersion: { type: Number, required: true },
+    policyRevision: Number,
+    assignedHead: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     reviewNote: { type: String, trim: true, maxlength: 1000, default: '' },
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

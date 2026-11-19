@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
+  if (redirectSignedInUser()) return;
   const form = document.getElementById('signup-form');
   const usernameInput = document.getElementById('username');
   const emailInput = document.getElementById('email');
@@ -126,6 +127,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
+    if (redirectSignedInUser()) return;
     hideBanner();
 
     const isUsernameValid = validateUsername();

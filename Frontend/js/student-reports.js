@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
   const root = document.getElementById('view-student-reports');
   if (!root) return;
-  const tabs = [...root.querySelectorAll('[data-student-report-tab]')];
+  const tabs = [...root.querySelectorAll('[data-student-report-tab]')].filter((tab) => !tab.hidden);
   const panels = root.querySelectorAll('[data-student-report-panel]');
   const UI = AcademicUI;
   const el = (id) => document.getElementById('attendance-' + id);
@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
         await UI.api('/teacher/subjects/' + encodeURIComponent(context.subjectId) + '/attendance/' + encodeURIComponent(student.studentId), {
           method: 'PUT', body: JSON.stringify({ date: context.date, status })
         });
-        student.status = status;
+        student.status = status; student.recorded = true;
         drafts.delete(key);
       }
       el('status').textContent = 'Attendance saved for ' + context.date + '.';

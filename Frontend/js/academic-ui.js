@@ -79,6 +79,7 @@ window.AcademicUI = (function () {
     return el;
   }
   function showReport(data, type) {
+    if (type === 'final' && window.SF9Report) return window.SF9Report.show(data);
     let dialog = document.getElementById('report-dialog');
     if (!dialog) {
       dialog = node('dialog');

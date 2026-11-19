@@ -409,16 +409,18 @@ document.addEventListener('DOMContentLoaded', function () {
     row.appendChild(cell);
   }
   function openClearData(kind, ids, label) {
-    if (!ids.length) return;
+    if (kind !== 'school' && !ids.length) return;
     clearSelection = { kind, ids };
     clearInput.value = '';
     clearSubmit.disabled = true;
     document.getElementById('clear-data-error').hidden = true;
     document.getElementById('clear-data-target').textContent = label;
     document.getElementById('clear-data-description').textContent =
-      kind === 'classes'
-        ? 'Removes the selected classes, their students, subjects, activities, grades, edit requests, history, and teacher assignments. Teacher accounts are kept.'
-        : 'Removes the selected subjects, activities, grades, enrollments, edit requests, history, and subject teacher assignments. Classes, student records, and teacher accounts are kept.';
+      kind === 'school'
+        ? 'Clears all classes, subjects, assignments, activities, grades, attendance, core values, narrative reports, edit requests, deadlines, and modification history. All accounts and roles (Super Admin, Class Advisor, Subject Teacher) and student profiles are kept. Students will need new class and subject assignments.'
+        : kind === 'classes'
+          ? 'Removes the selected classes and their subjects, grades, attendance, values, narratives, edit requests, and modification history. Student profiles and all accounts and roles are kept. Students will need new class assignments.'
+          : 'Removes the selected subjects, activities, grades, attendance, values, narratives, enrollments, edit requests, and modification history. Classes, student profiles, accounts, and roles are kept.';
     clearDialog.showModal();
     clearCancel.focus();
   }
@@ -432,6 +434,7 @@ document.addEventListener('DOMContentLoaded', function () {
       );
     });
   });
+  document.getElementById('clear-school-data').addEventListener('click', () => openClearData('school', [], 'All school data ? preserve accounts, roles, and students'));
   clearInput.addEventListener('input', () => {
     clearSubmit.disabled = clearing || clearInput.value !== 'CLEAR';
   });
@@ -472,7 +475,9 @@ document.addEventListener('DOMContentLoaded', function () {
         body: JSON.stringify({ ids: clearSelection.ids, confirmation: clearInput.value })
       });
       const removed = new Set(clearSelection.ids);
-      if (clearSelection.kind === 'classes') {
+      if (clearSelection.kind === 'school') {
+        cachedClasses = []; cachedSubjects = [];
+      } else if (clearSelection.kind === 'classes') {
         cachedClasses = cachedClasses.filter((item) => !removed.has(item._id));
         if (cachedSubjects)
           cachedSubjects = cachedSubjects.filter((item) => !removed.has(item.class?._id));
@@ -483,7 +488,7 @@ document.addEventListener('DOMContentLoaded', function () {
       clearDialog.close();
       await reloadTables();
       alert(
-        'Data cleared. The selected blocks and linked records have been removed from admin, adviser, and teacher records.'
+        'Data cleared, including linked report records and modification history. Accounts, roles, and student profiles are preserved.'
       );
     } catch (error) {
       errorBox.textContent =

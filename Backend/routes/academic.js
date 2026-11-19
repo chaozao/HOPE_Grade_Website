@@ -95,8 +95,17 @@ router.get(
   '/teacher/subjects/:id/roster',
   route((req) => service.teacherRoster(req.user, req.params.id))
 );
+router.get('/adviser/report-subjects', route((req) => service.advisoryReportSubjects(req.user)));
 router.get('/teacher/subjects/:id/attendance',
   route((req) => service.attendance(req.user, req.params.id, req.query.date)));
+router.get('/teacher/subjects/:id/narrative-reports',
+  route((req) => service.narrativeReports(req.user, req.params.id, Number(req.query.term))));
+router.get('/teacher/subjects/:id/core-values',
+  route((req) => service.coreValueReports(req.user, req.params.id)));
+router.put('/teacher/subjects/:id/core-values/:studentId',
+  route((req) => service.saveCoreValues(req.user, req.params.id, req.params.studentId, req.body)));
+router.put('/teacher/subjects/:id/narrative-reports/:studentId',
+  route((req) => service.saveNarrativeReport(req.user, req.params.id, req.params.studentId, req.body)));
 router.put('/teacher/subjects/:id/attendance/:studentId',
   route((req) => service.saveAttendance(req.user, req.params.id, req.params.studentId, req.body)));
 router.post(

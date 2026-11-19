@@ -7,8 +7,98 @@ const Grade = require('../models/Grade');
 const EditRequest = require('../models/GradeEditRequest');
 const Audit = require('../models/AcademicAudit');
 const P = require('./academic-policy');
+const GradingAccess = require('./grading-access');
+const SubjectLeadership = require('../models/SubjectLeadership');
+const SF9 = require('./sf9');
 const TermGrades = require('../../Frontend/js/term-grades');
 const Attendance = require('../models/Attendance');
+const NarrativeReport = require('../models/NarrativeReport');
+const CoreValueReport = require('../models/CoreValueReport');
+const CoreValues = require('../../Frontend/js/core-values');
+const dailyAttendance = require('./daily-attendance');
+async function advisorySubject(actor, subjectId) {
+  await teacher(actor);
+  const subject = await Subject.findById(P.id(subjectId, 'subject')).session(null);
+  if (!subject) P.fail('Subject not found.', 404);
+  const cls = await Class.findById(subject.class).session(null);
+  if (!cls || String(cls.adviser) !== actor.userId) P.fail("Only the student's class adviser can manage values and narrative reports.", 403);
+  return subject;
+}
+
+async function coreValueReports(actor, subjectId) {
+  const subject = await advisorySubject(actor, subjectId);
+  const students = await Student.find({ $and: [P.rosterFilter(subject), { class: subject.class }] }).sort({ lastName: 1, firstName: 1 });
+  const reports = await CoreValueReport.find({ subject: subject._id });
+  return { roster: students.map((student) => ({
+    studentId: student._id, firstName: student.firstName, lastName: student.lastName,
+    reports: reports.filter((report) => String(report.student) === String(student._id)).map((report) => ({
+      term: report.term, category: report.category,
+      ratings: report.ratings instanceof Map ? Object.fromEntries(report.ratings) : report.ratings || {}
+    }))
+  })) };
+}
+async function saveCoreValues(actor, subjectId, studentId, body) {
+  const term = narrativeTerm(body?.term);
+  const category = body?.category;
+  if (!['filipino', 'personal'].includes(category)) P.fail('Select a valid core values category.');
+  if (!body.ratings || typeof body.ratings !== 'object' || Array.isArray(body.ratings)) P.fail('Enter valid ratings.');
+  const allowed = new Set(CoreValues[category].items.map((item) => item[0]));
+  const ratings = {};
+  for (const [key, value] of Object.entries(body.ratings)) {
+    if (!allowed.has(key) || typeof value !== 'string' || !['', 'AO', 'SO', 'RO', 'NO'].includes(value))
+      P.fail('Select AO, SO, RO, or NO for each behavior statement.');
+    ratings[key] = value;
+  }
+  const subject = await advisorySubject(actor, subjectId);
+  const student = await Student.findById(P.id(studentId, 'student'));
+  if (!student || !P.enrolled(student, subject) || String(student.class) !== String(subject.class)) P.fail('This student is not enrolled in your subject.', 403);
+  const filter = { subject: subject._id, student: student._id, term, category };
+  const update = { $set: { ratings, updatedBy: actor.userId } };
+  try {
+    await CoreValueReport.updateOne(filter, update, { upsert: true, runValidators: true });
+  } catch (error) {
+    if (error.code !== 11000) throw error;
+    await CoreValueReport.updateOne(filter, update, { runValidators: true });
+  }
+  return { studentId, term, category, ratings };
+}
+function narrativeTerm(term) {
+  if (![1, 2, 3].includes(term)) P.fail('Select a term from 1 to 3.');
+  return term;
+}
+async function narrativeReports(actor, subjectId, term) {
+  narrativeTerm(term);
+  const subject = await advisorySubject(actor, subjectId);
+  const students = await Student.find({ $and: [P.rosterFilter(subject), { class: subject.class }] }).sort({ lastName: 1, firstName: 1 });
+  const reports = await NarrativeReport.find({ subject: subject._id, term });
+  const byStudent = new Map(reports.map((report) => [String(report.student), report]));
+  return { roster: students.map((student) => ({
+    studentId: student._id, firstName: student.firstName, lastName: student.lastName,
+    canDo: byStudent.get(String(student._id))?.canDo || '',
+    improving: byStudent.get(String(student._id))?.improving || ''
+  })) };
+}
+async function saveNarrativeReport(actor, subjectId, studentId, body) {
+  const term = narrativeTerm(body?.term);
+  const text = {};
+  for (const field of ['canDo', 'improving']) {
+    if (typeof body[field] !== 'string' || body[field].length > 10000)
+      P.fail('Each narrative must be text of at most 10,000 characters.');
+    text[field] = body[field];
+  }
+  const subject = await advisorySubject(actor, subjectId);
+  const student = await Student.findById(P.id(studentId, 'student'));
+  if (!student || !P.enrolled(student, subject) || String(student.class) !== String(subject.class)) P.fail('This student is not enrolled in your subject.', 403);
+  const filter = { subject: subject._id, student: student._id, term };
+  const update = { $set: { ...text, updatedBy: actor.userId } };
+  try {
+    await NarrativeReport.updateOne(filter, update, { upsert: true, runValidators: true });
+  } catch (error) {
+    if (error.code !== 11000) throw error;
+    await NarrativeReport.updateOne(filter, update, { runValidators: true });
+  }
+  return { studentId, term, ...text };
+}
 function attendanceDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
       !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value)
@@ -19,28 +109,33 @@ async function attendance(actor, subjectId, date) {
   date = attendanceDate(date);
   const subject = await ownedSubject(actor, subjectId);
   const students = await Student.find(P.rosterFilter(subject)).sort({ lastName: 1, firstName: 1 });
-  const records = await Attendance.find({ subject: subject._id, date });
-  const statuses = new Map(records.map((record) => [String(record.student), record.status]));
+  await Attendance.ensureTermIndex();
+  const records = dailyAttendance(await Attendance.find({ subject: subject._id, date }));
+  const statuses = new Map(records.map((record) => [String(record.student), record]));
   return { date, roster: students.map((student) => ({
     studentId: student._id, firstName: student.firstName, lastName: student.lastName,
-    status: statuses.get(String(student._id)) || 'unmarked'
+    status: statuses.get(String(student._id))?.status || 'unmarked',
+    term: statuses.get(String(student._id))?.term || null,
+    recorded: statuses.has(String(student._id))
   })) };
 }
 async function saveAttendance(actor, subjectId, studentId, body) {
   const date = attendanceDate(body?.date);
+  const term = null;
   if (!['unmarked', 'absent', 'present', 'tardy'].includes(body?.status)) P.fail('Select a valid attendance status.');
   const subject = await ownedSubject(actor, subjectId);
   const student = await Student.findById(P.id(studentId, 'student'));
   if (!student || !P.enrolled(student, subject)) P.fail('This student is not enrolled in your subject.', 403);
-  const filter = { subject: subject._id, student: student._id, date };
-  const update = { $set: { status: body.status, updatedBy: actor.userId } };
+  await Attendance.ensureTermIndex();
+  const filter = { subject: subject._id, student: student._id, date, term };
+  const update = { $set: { status: body.status, term, updatedBy: actor.userId } };
   try {
     await Attendance.updateOne(filter, update, { upsert: true, runValidators: true });
   } catch (error) {
     if (error.code !== 11000) throw error;
     await Attendance.updateOne(filter, update, { runValidators: true });
   }
-  return { studentId, date, status: body.status };
+  return { studentId, date, term, status: body.status };
 }
 function reportGrade(subject, grade) {
   if (!subject?.activities?.length) return P.weightedGrade(grade?.scores);
@@ -109,6 +204,7 @@ async function roster(subject, session = null) {
 }
 async function teacherRoster(actor, subjectId) {
   const subject = await ownedSubject(actor, subjectId);
+  const editing = await GradingAccess.access(actor, subject);
   const rows = await roster(subject);
   rows.forEach((row) => {
     row.terms = Object.fromEntries([1, 2, 3].map((term) => [term,
@@ -126,7 +222,13 @@ async function teacherRoster(actor, subjectId) {
     subjectName: subject.name,
     className: cls?.name || 'Class unavailable',
     adviserName: cls?.adviser?.username || '',
-    canRequestEdit: Boolean(cls?.adviser),
+    canRequestEdit: editing.canRequest,
+    canFinalize: Boolean(cls?.adviser),
+    canEditGrades: editing.canEdit,
+    gradingDeadline: editing.policy?.deadline || null,
+    isSubjectHead: editing.isHead,
+    subjectHeadAssigned: Boolean(editing.policy?.head),
+    editPermissionGranted: editing.granted,
     gradeStatus: subject.gradeStatus || 'draft',
     gradeVersion: subject.gradeVersion || 0,
     finalizedAt: subject.finalizedAt,
@@ -146,9 +248,14 @@ async function teacherRoster(actor, subjectId) {
     activities: subject.activities || []
   };
 }
-async function mySubjects(actor) {
+async function advisoryReportSubjects(actor) {
   await teacher(actor);
-  const subjects = await Subject.find({ teacher: actor.userId }).populate('class', 'name gradeLevel section');
+  const classes = await Class.find({ adviser: actor.userId }).session(null);
+  return mySubjects(actor, classes.map((cls) => cls._id));
+}
+async function mySubjects(actor, advisoryClasses = null) {
+  await teacher(actor);
+  const subjects = await Subject.find(advisoryClasses ? { class: { $in: advisoryClasses } } : { teacher: actor.userId }).populate('class', 'name gradeLevel section');
   return Promise.all(
     subjects.map(async (subject) => {
       const filter = P.rosterFilter(subject);
@@ -187,7 +294,7 @@ async function addActivity(actor, subjectId, body) {
   let result;
   await mongoose.connection.transaction(async (session) => {
     const subject = await ownedSubject(actor, subjectId, session);
-    P.requireDraft(subject);
+    await GradingAccess.requireEditing(actor, subject, session);
     P.version(body.version, subject.gradeVersion);
     subject.activities ||= [];
     if (
@@ -225,7 +332,7 @@ async function changeActivity(actor, subjectId, activityId, body, remove = false
   let result;
   await mongoose.connection.transaction(async (session) => {
     const subject = await ownedSubject(actor, subjectId, session);
-    P.requireDraft(subject);
+    await GradingAccess.requireEditing(actor, subject, session);
     P.version(body?.version, subject.gradeVersion);
     const activity = subject.activities.id(activityId);
     if (!activity) P.fail('Activity not found. Reload the class.', 404);
@@ -275,7 +382,7 @@ async function reorderActivities(actor, subjectId, body) {
   let result;
   await mongoose.connection.transaction(async (session) => {
     const subject = await ownedSubject(actor, subjectId, session);
-    P.requireDraft(subject);
+    await GradingAccess.requireEditing(actor, subject, session);
     P.version(body.version, subject.gradeVersion);
     const matches = (activity) => activity.term === body.term && activity.category === body.category;
     const current = subject.activities.filter(matches);
@@ -299,7 +406,7 @@ async function saveActivityScores(actor, subjectId, body) {
   let gradeVersion;
   await mongoose.connection.transaction(async (session) => {
     const subject = await ownedSubject(actor, subjectId, session);
-    P.requireDraft(subject);
+    await GradingAccess.requireEditing(actor, subject, session);
     P.version(body?.version, subject.gradeVersion);
     const students = await Student.find(P.rosterFilter(subject)).select('_id').session(session);
     const entries = P.validateActivityScores(
@@ -339,7 +446,7 @@ async function saveGrades(actor, subjectId, body) {
   let gradeVersion;
   await mongoose.connection.transaction(async (session) => {
     const subject = await ownedSubject(actor, subjectId, session);
-    P.requireDraft(subject);
+    await GradingAccess.requireEditing(actor, subject, session);
     P.version(body?.version, subject.gradeVersion);
     const students = await Student.find(P.rosterFilter(subject)).select('_id').session(session);
     const entries = P.validateGrades(
@@ -383,6 +490,7 @@ async function finalize(actor, subjectId, body) {
     subject.gradeStatus = 'finalized';
     subject.finalizedAt = new Date();
     subject.finalizedBy = actor.userId;
+    subject.editPermission = undefined;
     await touch(subject, session);
     await audit(
       actor,
@@ -391,51 +499,35 @@ async function finalize(actor, subjectId, body) {
       session
     );
   });
-  return { message: 'Grades finalized and locked.' };
+  return { message: 'Grades finalized for reports.' };
 }
 async function requestEdit(actor, subjectId, body) {
   const reason = P.text(body?.reason, 'reason for reopening', 1000);
   await mongoose.connection.transaction(async (session) => {
     const subject = await ownedSubject(actor, subjectId, session);
-    if (subject.gradeStatus !== 'finalized')
-      P.fail('Only finalized grades require reopening.', 409);
+    const state = await GradingAccess.access(actor, subject, session, true);
+    if (!state.canRequest) P.fail('Edit requests are available only after the deadline, for teachers who need subject-head approval.', 409);
     P.version(body?.version, subject.gradeVersion);
-    const cls = await Class.findById(subject.class).session(session);
-    if (!cls?.adviser) P.fail('The subject’s class has no adviser. Contact the super admin.', 409);
     if (await EditRequest.exists({ subject: subject._id, status: 'pending' }).session(session))
       P.fail('An edit request is already pending for this subject.', 409);
     await touch(subject, session, false);
-    const [request] = await EditRequest.create(
-      [
-        {
-          subject: subject._id,
-          class: subject.class,
-          requestedBy: actor.userId,
-          reason,
-          gradeVersion: subject.gradeVersion || 0
-        }
-      ],
-      { session }
-    );
-    await audit(
-      actor,
-      'reopening-requested',
-      { subject: subject._id, request: request._id, details: { reason } },
-      session
-    );
+    const [request] = await EditRequest.create([{
+      subject: subject._id, class: subject.class, requestedBy: actor.userId, reason,
+      gradeVersion: subject.gradeVersion || 0, policyRevision: state.policy.revision,
+      assignedHead: state.policy.head
+    }], { session });
+    await audit(actor, 'reopening-requested', { subject: subject._id, request: request._id, details: { reason } }, session);
   });
-  return {
-    message: 'Edit request sent to the class adviser. Grades remain locked until approved.'
-  };
+  return { message: 'Edit request sent to the subject head. Grades remain locked until approved.' };
 }
 async function requestsForAdviser(actor) {
-  const classes = await adviser(actor);
-  return EditRequest.find({ class: { $in: classes.map((cls) => cls._id) } })
-    .populate('subject', 'name gradeStatus')
-    .populate('class', 'name')
-    .populate('requestedBy', 'username')
-    .populate('reviewedBy', 'username')
-    .sort({ createdAt: -1 });
+  await teacher(actor);
+  const policies = await SubjectLeadership.find({ head: actor.userId });
+  const subjects = await Subject.find();
+  const ids = subjects.filter((subject) => policies.some((policy) => policy.name === GradingAccess.key(subject.name))).map((s) => s._id);
+  return EditRequest.find({ subject: { $in: ids } })
+    .populate('subject', 'name gradeStatus').populate('class', 'name')
+    .populate('requestedBy', 'username').populate('reviewedBy', 'username').sort({ createdAt: -1 });
 }
 async function myRequests(actor) {
   await teacher(actor);
@@ -476,18 +568,17 @@ async function reviewRequest(actor, requestId, body) {
   if (!['approved', 'rejected'].includes(body?.decision)) P.fail('Choose approve or reject.');
   const note = P.text(body.note, 'review note', 1000, true);
   await mongoose.connection.transaction(async (session) => {
-    await adviser(actor, session);
+    await teacher(actor, session);
     const request = await EditRequest.findById(requestId).session(session);
     if (!request) P.fail('Edit request not found.', 404);
-    const cls = await Class.findOne({ _id: request.class, adviser: actor.userId }).session(session);
-    if (!cls) P.fail('Only the adviser of this subject’s class may review this request.', 403);
-    if (request.status !== 'pending') P.fail('This request has already been reviewed.', 409);
     const subject = await Subject.findById(request.subject).session(session);
-    if (!subject || String(subject.class) !== String(cls._id))
-      P.fail('The subject’s class assignment changed. Reload the request.', 409);
+    if (!subject) P.fail('Subject not found.', 404);
+    const state = await GradingAccess.access(actor, subject, session, true);
+    if (!state.isHead) P.fail('Only the assigned subject head may review this request.', 403);
+    if (request.status !== 'pending') P.fail('This request has already been reviewed.', 409);
     if (body.decision === 'approved') {
       if (
-        subject.gradeStatus !== 'finalized' ||
+        !state.expired || request.policyRevision !== state.policy.revision ||
         subject.gradeVersion !== request.gradeVersion ||
         String(subject.teacher) !== String(request.requestedBy)
       ) {
@@ -496,6 +587,7 @@ async function reviewRequest(actor, requestId, body) {
           409
         );
       }
+      subject.editPermission = { teacher: subject.teacher, policyRevision: state.policy.revision };
       subject.gradeStatus = 'draft';
       subject.finalizedAt = null;
       subject.finalizedBy = null;
@@ -696,7 +788,9 @@ async function monitor(actor) {
       ).length
     };
   });
+  const reportSource = await SF9.source(students.map((s) => s._id), subjects.map((s) => s._id));
   const studentSummaries = students.map((student) => {
+    const supplement = SF9.build(student, subjects.filter((subject) => P.enrolled(student, subject)), reportSource);
     const entries = subjects
       .filter((subject) => P.enrolled(student, subject))
       .map((subject) => ({
@@ -711,8 +805,9 @@ async function monitor(actor) {
       name: student.lastName + ', ' + student.firstName,
       className: classes.find((cls) => String(cls._id) === String(student.class))?.name,
       subjects: entries,
+      reportMissing: supplement.missing,
       readyForReport:
-        entries.length > 0 &&
+        !supplement.missing.length && entries.length > 0 &&
         entries.every((entry) => entry.grade !== null && entry.status === 'finalized')
     };
   });
@@ -747,8 +842,16 @@ async function finalReport(actor, studentId) {
         student: student._id,
         subject: { $in: included.map((subject) => subject._id) }
       }).session(session);
+      const supplement = SF9.build(student, included, await SF9.source([student._id], included.map((s) => s._id), session));
+      if (supplement.missing.length) P.fail('SF9 is incomplete: ' + supplement.missing.join(' '), 409);
       const entries = included.map((subject) => ({
+        subjectId: String(subject._id),
         name: subject.name,
+        terms: [1, 2, 3].map((term) => {
+          const grade = grades.find((item) => String(item.subject) === String(subject._id));
+          const scores = grade?.activityScores instanceof Map ? Object.fromEntries(grade.activityScores) : grade?.activityScores || {};
+          return TermGrades.calculate(subject.activities || [], scores, term).termGrade;
+        }),
         grade: reportGrade(subject,
           grades.find((grade) => String(grade.subject) === String(subject._id))
         ),
@@ -763,11 +866,13 @@ async function finalReport(actor, studentId) {
       return {
         student,
         className: cls.name,
-        section: cls.section || cls.name,
         adviserName: user.username,
+        ...supplement,
+        gradeLevel: student.gradeLevel || cls.gradeLevel || '',
+        section: cls.section || cls.name,
         subjects: entries,
         generalAverage: Number(
-          (entries.reduce((sum, entry) => sum + entry.grade, 0) / entries.length).toFixed(1)
+          (entries.reduce((sum, entry) => sum + entry.grade, 0) / entries.length).toFixed(2)
         ),
         generatedAt: new Date()
       };
@@ -810,11 +915,16 @@ async function insights(actor, subjectId) {
   };
 }
 module.exports = {
+  coreValueReports,
+  saveCoreValues,
+  narrativeReports,
+  saveNarrativeReport,
   attendance,
   saveAttendance,
   adviser,
   teacherRoster,
   mySubjects,
+  advisoryReportSubjects,
   saveActivityScores,
   addActivity,
   changeActivity,

@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const models = Object.fromEntries(
-  ['User', 'Class', 'Subject', 'Student', 'Grade', 'GradeEditRequest', 'AcademicAudit'].map(
+  ['User', 'Class', 'Subject', 'Student', 'Grade', 'GradeEditRequest', 'AcademicAudit', 'Attendance', 'NarrativeReport', 'CoreValueReport', 'SubjectLeadership', 'SchoolTerms', 'AdminHistory'].map(
     (name) => [name, require('../models/' + name)]
   )
 );
@@ -26,7 +26,7 @@ test('subject and class clearing preserve unrelated data and synchronize assignm
   let state = {
     User: [
       { _id: id(1), role: 'admin', isActive: true },
-      { _id: id(2), role: 'teacher' }
+      { _id: id(2), role: 'teacher', teacherRoles: ['class-advisor', 'subject-teacher'] }
     ],
     Class: [{ _id: id(3), adviser: id(2) }, { _id: id(4) }],
     Subject: [
@@ -44,6 +44,8 @@ test('subject and class clearing preserve unrelated data and synchronize assignm
     GradeEditRequest: [{ _id: id(11), class: id(3), subject: id(5) }],
     AcademicAudit: [{ subject: id(5) }, { student: id(7) }, { subject: id(6) }]
   };
+  for (const name of Object.keys(models)) state[name] ||= [];
+  for (const name of ['Attendance', 'NarrativeReport', 'CoreValueReport']) state[name] = [{ subject: id(5), student: id(7) }, { subject: id(6), student: id(8) }];
   const matches = (doc, filter) =>
     Object.entries(filter).every(([key, value]) => {
       if (key === '$or') return value.some((part) => matches(doc, part));
@@ -109,17 +111,25 @@ test('subject and class clearing preserve unrelated data and synchronize assignm
   assert.equal(state.Class.length, 2);
   assert.equal(state.Grade.length, 1);
   assert.equal(state.GradeEditRequest.length, 0);
-  assert.deepEqual(state.User[1].teacherRoles, ['class-advisor']);
+  assert.deepEqual(state.User[1].teacherRoles, ['class-advisor', 'subject-teacher']);
+  assert.equal(state.Attendance.length, 1);
   await clearData(actor, 'classes', body([id(3)]));
   assert.deepEqual(
     state.Student.map((doc) => doc._id),
-    [id(8)]
+    [id(7), id(8)]
   );
+  assert.equal(state.Student[0].class, null);
   assert.deepEqual(
     state.Class.map((doc) => doc._id),
     [id(4)]
   );
   assert.deepEqual(state.AcademicAudit, [{ subject: id(6) }]);
-  assert.deepEqual(state.User[1].teacherRoles, []);
+  assert.deepEqual(state.User[1].teacherRoles, ['class-advisor', 'subject-teacher']);
   assert.equal(state.User.length, 2);
+  await clearData(actor, 'school', { confirmation: 'CLEAR' });
+  assert.equal(state.Student.length, 2);
+  assert.equal(state.User.length, 2);
+  assert.deepEqual(state.User[1].teacherRoles, ['class-advisor', 'subject-teacher']);
+  assert.ok(state.Student.every((student) => student.class === null && !student.subjects.length));
+  for (const name of Object.keys(models).filter((name) => !['User', 'Student'].includes(name))) assert.equal(state[name].length, 0, name);
 });

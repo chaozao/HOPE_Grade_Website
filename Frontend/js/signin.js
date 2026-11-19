@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
+  if (redirectSignedInUser()) return;
   const form = document.getElementById('login-form');
   const emailInput = document.getElementById('email');
   const passwordInput = document.getElementById('password');
@@ -61,6 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
+    if (redirectSignedInUser()) return;
     hideBanner();
 
     const email = emailInput.value.trim();
@@ -80,7 +82,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const data = await response.json();
 
       if (response.ok) {
-        saveToken(data.token, remember); // from auth.js — picks localStorage vs sessionStorage
+        // Another tab may have signed in while this request was pending.
+        if (redirectSignedInUser()) return;
+        saveToken(data.token);
 
         const payload = getPayload(data.token); // from auth.js
 

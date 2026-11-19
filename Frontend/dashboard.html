@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="css/dashboard.css" />
     <link rel="stylesheet" href="css/academic.css" />
     <link rel="stylesheet" href="css/profile-photo.css" />
+    <link rel="stylesheet" href="css/subject-leadership.css" />
   </head>
   <body>
     <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
@@ -93,13 +94,13 @@
           <header class="content-header">
             <div>
               <h1 id="student-reports-title">Student Reports</h1>
-              <p class="content-subtitle">Attendance, values, and narrative reports for students in your assigned subjects.</p>
+              <p class="content-subtitle">Attendance for students in your assigned subjects.</p>
             </div>
           </header>
           <nav class="workflow-tabs" role="tablist" aria-label="Student report categories">
             <button type="button" id="student-report-tab-attendance" role="tab" data-student-report-tab="attendance" aria-controls="student-report-attendance" aria-selected="true" class="active">Attendance</button>
-            <button type="button" id="student-report-tab-values" role="tab" data-student-report-tab="values" aria-controls="student-report-values" aria-selected="false" tabindex="-1">Values</button>
-            <button type="button" id="student-report-tab-narrative" role="tab" data-student-report-tab="narrative" aria-controls="student-report-narrative" aria-selected="false" tabindex="-1">Narrative Report</button>
+            <button type="button" hidden id="student-report-tab-values" role="tab" data-student-report-tab="values" aria-controls="student-report-values" aria-selected="false" tabindex="-1">Values</button>
+            <button type="button" hidden id="student-report-tab-narrative" role="tab" data-student-report-tab="narrative" aria-controls="student-report-narrative" aria-selected="false" tabindex="-1">Narrative Report</button>
           </nav>
           <section class="grades-table-section" id="student-report-attendance" role="tabpanel" aria-labelledby="student-report-tab-attendance" data-student-report-panel="attendance" tabindex="0">
             <div class="table-header attendance-header">
@@ -129,12 +130,75 @@
             </div>
           </section>
           <section class="grades-table-section" id="student-report-values" role="tabpanel" aria-labelledby="student-report-tab-values" data-student-report-panel="values" tabindex="0" hidden>
-            <div class="table-header"><h2>Values</h2></div>
-            <p class="workflow-status">Values forms are not available yet.</p>
+            <div class="table-header narrative-header">
+              <h2>Values</h2>
+              <div class="narrative-filters">
+                <label>Grade level<select id="values-grade" disabled><option value="">Select grade level</option></select></label>
+                <label>Section<select id="values-section" disabled><option value="">Select section</option></select></label>
+                <label>Subject<select id="values-subject" disabled><option value="">Select subject</option></select></label>
+                <label>Term<select id="values-term"><option value="1">1st Term</option><option value="2">2nd Term</option><option value="3">3rd Term</option></select></label>
+              </div>
+            </div>
+            <p id="values-status" class="attendance-note" role="status" hidden></p>
+            <button type="button" id="values-retry" class="filter-btn" hidden>Retry</button>
+            <nav class="workflow-tabs values-categories" aria-label="Core values categories">
+              <button type="button" id="values-filipino" aria-pressed="true" class="active">Filipino Core Values</button>
+              <button type="button" id="values-personal" aria-pressed="false">His/Her Core Values</button>
+            </nav>
+            <div class="class-table-scroll">
+              <table class="grades-table values-roster">
+                <thead><tr><th scope="col">Student Name</th><th scope="col">Progress</th><th scope="col">Actions</th></tr></thead>
+                <tbody id="values-students"><tr><td colspan="3">Select a grade level, section, and subject to view students.</td></tr></tbody>
+              </table>
+            </div>
+            <nav class="attendance-footer" aria-label="Values student pages">
+              <button type="button" id="values-prev" class="filter-btn" disabled>Previous</button>
+              <span id="values-page" aria-live="polite">Page 1 of 1</span>
+              <button type="button" id="values-next" class="filter-btn" disabled>Next</button>
+            </nav>
+            <dialog id="values-dialog" class="workflow-dialog values-dialog" aria-labelledby="values-dialog-title">
+              <header class="values-dialog-header">
+                <h2 id="values-dialog-title"></h2>
+                <p id="values-dialog-context"></p>
+                <p id="values-dialog-category"></p>
+              </header>
+              <p id="values-dialog-status" role="status" hidden></p>
+              <div class="values-grid-scroll"><table class="grades-table values-grid">
+                <thead><tr><th scope="col">Core Values</th><th scope="col">Behavior Statements</th><th scope="col">1st Term</th><th scope="col">2nd Term</th><th scope="col">3rd Term</th></tr></thead>
+                <tbody id="values-dialog-body"></tbody>
+              </table></div>
+              <div class="values-dialog-actions">
+                <button type="button" id="values-close" class="filter-btn">Close</button>
+                <button type="button" id="values-save" class="filter-btn" disabled>Save Values</button>
+              </div>
+            </dialog>
           </section>
           <section class="grades-table-section" id="student-report-narrative" role="tabpanel" aria-labelledby="student-report-tab-narrative" data-student-report-panel="narrative" tabindex="0" hidden>
-            <div class="table-header"><h2>Narrative Report</h2></div>
-            <p class="workflow-status">Narrative report forms are not available yet.</p>
+            <div class="table-header narrative-header">
+              <h2>Narrative Report</h2>
+              <div class="narrative-filters">
+                <label>Grade level<select id="narrative-grade" disabled><option value="">Select grade level</option></select></label>
+                <label>Section<select id="narrative-section" disabled><option value="">Select section</option></select></label>
+                <label>Subject<select id="narrative-subject" disabled><option value="">Select subject</option></select></label>
+                <label>Term<select id="narrative-term"><option value="1">1st Term</option><option value="2">2nd Term</option><option value="3">3rd Term</option></select></label>
+              </div>
+            </div>
+            <p id="narrative-status" class="attendance-note" role="status"></p>
+            <button type="button" id="narrative-retry" class="filter-btn" hidden>Retry</button>
+            <div class="class-table-scroll" tabindex="0" role="region" aria-label="Narrative report students">
+              <table class="grades-table narrative-table">
+                <thead><tr><th scope="col">Name of the Student</th><th scope="col">What Your Child Can Do</th><th scope="col">What Your Child Is Learning to Improve</th></tr></thead>
+                <tbody id="narrative-students"><tr><td colspan="3">Select a grade level, section, and subject to view students.</td></tr></tbody>
+              </table>
+            </div>
+            <div class="attendance-footer">
+              <nav class="attendance-pagination" aria-label="Narrative report pages">
+                <button type="button" class="filter-btn" id="narrative-prev" disabled>Previous</button>
+                <span id="narrative-page" aria-live="polite">Page 1 of 1</span>
+                <button type="button" class="filter-btn" id="narrative-next" disabled>Next</button>
+              </nav>
+              <button type="button" class="filter-btn" id="narrative-save" disabled>Save Report</button>
+            </div>
           </section>
         </section>
         <section class="advisor-panel" id="view-class" aria-labelledby="class-title" hidden>
@@ -221,12 +285,16 @@
 
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/subject-leadership.js"></script>
     <script src="js/profile-photo.js"></script>
     <script src="js/sidebar-toggle.js"></script>
     <script src="js/academic-ui.js"></script>
     <script src="js/term-grades.js"></script>
     <script src="js/class-browser.js"></script>
     <script src="js/student-reports.js"></script>
+    <script src="js/narrative-reports.js"></script>
+    <script src="js/core-values.js"></script>
+    <script src="js/values-reports.js"></script>
     <script src="js/dashboard.js"></script>
   </body>
 </html>

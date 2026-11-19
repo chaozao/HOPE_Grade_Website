@@ -276,6 +276,21 @@
   margin-top: 14px;
   color: #55635d;
 }
+.sf9-scroll { overflow-x: auto; }
+.sf9-report .report-table { table-layout: fixed; min-width: 650px; }
+.sf9-report .report-table td { white-space: pre-wrap; overflow-wrap: anywhere; }
+.sf9-report h2 { font-size: 18px; margin-top: 28px; }
+#report-dialog .report-tools { position: static; justify-content: flex-end; flex-wrap: wrap; margin-top: 24px; padding: 12px 0 0; }
+.sf9-report .report-table th { overflow-wrap: anywhere; }
+.sf9-report .report-table td { vertical-align: middle; }
+.sf9-report h1 { font-size: clamp(22px, 3vw, 30px); }
+.sf9-requirements { margin-top: 10px; max-width: 420px; font-size: 13px; line-height: 1.5; }
+.sf9-requirements summary { cursor: pointer; color: #765619; }
+.sf9-requirements ul { padding-left: 20px; margin-top: 8px; }
+@media print {
+  .sf9-scroll { overflow: visible; }
+  .sf9-report .report-table { min-width: 0; }
+}
 @media (max-width: 600px) {
   .workflow-form-grid,
   .report-meta {
@@ -734,6 +749,82 @@
 }
 #attendance-save:not(:disabled):hover { background: #1d382e; }
 .attendance-footer button:disabled { opacity: 0.5; cursor: not-allowed; }
+.narrative-header { flex-wrap: wrap; gap: 16px; }
+.narrative-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  flex: 1 1 480px;
+  max-width: 800px;
+  align-items: end;
+}
+.narrative-filters label { display: flex; flex-direction: column; gap: 6px; min-width: 0; color: var(--color-muted); font-size: 12px; }
+.narrative-filters select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 40px; padding: 9px 12px; border: 1px solid var(--color-border); border-radius: 6px; background: #fff; color: var(--color-text); font: inherit; font-size: 14px; }
+.narrative-filters select:disabled { background: #f1efe9; color: #7a817c; cursor: not-allowed; }
+#student-report-narrative { min-width: 0; overflow: hidden; }
+#student-report-narrative .class-table-scroll { max-height: clamp(180px, 45dvh, 600px); overflow: auto; }
+#student-report-narrative .narrative-table { min-width: 540px; table-layout: fixed; width: 100%; }
+.narrative-table th { position: sticky; top: 0; z-index: 1; }
+.narrative-table th, .narrative-table td { overflow-wrap: anywhere; vertical-align: middle; text-align: center; }
+.narrative-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 110px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font: inherit;
+  line-height: 1.5;
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+  field-sizing: content;
+}
+#narrative-status:empty { display: none; }
+#narrative-save:not(:disabled) { background: #294b3f; color: #fff; border-color: #294b3f; }
+#narrative-save:not(:disabled):hover { background: #1d382e; }
+.values-categories { padding: 12px 20px 0; margin-bottom: 0; }
+.values-categories button { border-radius: 0; border-bottom: 2px solid transparent; padding: 14px 16px; }
+.values-categories button.active { background: transparent; color: #294b3f; border-bottom-color: #294b3f; font-weight: 600; }
+.values-categories button:hover { background: #eef1eb; }
+.values-roster th:not(:first-child), .values-roster td:not(:first-child) { text-align: center; }
+dialog.values-dialog { width: min(1000px, calc(100vw - 32px)); max-width: none; max-height: 85dvh; padding: 0; overflow: auto; }
+.values-dialog-header { position: sticky; top: 0; z-index: 3; background: #fff; padding: 20px; border-bottom: 1px solid var(--color-border); }
+.values-dialog-header h2 { margin: 0; color: #294b3f; }
+.values-dialog-header p { margin: 8px 0 0; line-height: 1.5; }
+#values-dialog-category { font-size: 13px; color: var(--color-muted); }
+#values-dialog-status { margin: 12px 20px; }
+.values-grid-scroll { overflow: auto; }
+.values-grid { min-width: 720px; table-layout: fixed; }
+.values-grid th:first-child { width: 18%; }
+.values-grid th:nth-child(2) { width: 37%; }
+.values-grid th, .values-grid td { overflow-wrap: anywhere; vertical-align: middle; }
+.values-grid th:nth-child(n + 3), .values-grid .values-term-cell { text-align: center; padding: 12px 8px; }
+.values-grid .values-group-label { vertical-align: middle; }
+.values-grid select { width: 100%; min-width: 0; font-size: 14px; }
+.values-grid .values-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 100px;
+  font: inherit;
+  line-height: 1.5;
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+  field-sizing: content;
+}
+.values-grid .values-term-cell { white-space: pre-wrap; }
+.values-dialog-actions { position: sticky; bottom: 0; z-index: 3; background: #fff; border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: 12px; padding: 16px 20px; }
+#values-save:not(:disabled) { background: #294b3f; border-color: #294b3f; color: #fff; }
+@media (max-width: 650px) {
+  .narrative-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .narrative-filters select { font-size: 16px; }
+}
 
 /* Attendance uses the available screen space without widening the whole page. */
 #student-report-attendance {
@@ -744,10 +835,10 @@
   padding: clamp(12px, 1.5vw, 24px);
 }
 #student-report-attendance .attendance-filters {
-  flex: 1 1 480px;
+  flex: 1 1 600px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  max-width: 800px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  max-width: 1000px;
 }
 #student-report-attendance .attendance-filters label { min-width: 0; }
 #student-report-attendance .attendance-filters input,
@@ -800,4 +891,22 @@
   #student-report-attendance .attendance-footer { padding: 12px; gap: 12px; }
   #student-report-attendance .attendance-pagination { flex: 1 1 100%; justify-content: center; gap: 8px; }
   #attendance-save { width: 100%; min-height: 44px; }
+}
+
+/* SF9: one monthly attendance grid and three narrative term rows. */
+.sf9-attendance h2, .sf9-narrative h2 { text-align: center; }
+.sf9-attendance .report-table th:first-child, .sf9-attendance .report-table td:first-child { width: 150px; }
+.sf9-attendance .report-table th, .sf9-attendance .report-table td { text-align: center; padding: 5px; font-size: 11px; }
+.sf9-narrative .report-table th:first-child, .sf9-narrative .report-table td:first-child { width: 45px; text-align: center; }
+.sf9-narrative .report-table td { vertical-align: top; }
+.sf9-narrative-entries p { margin: 0 0 8px; }
+@media print { .sf9-narrative .report-table tr { break-inside: auto; } }
+
+.values-dialog select.values-input { width: 100%; min-height: 42px; padding: 8px; border: 1px solid #d9d4c8; border-radius: 6px; background: #fff; font: inherit; }
+.grade-save-reminder { margin: auto; max-width: min(460px, 90vw); }
+.report-print-hint { color: #68746d; font-size: 13px; margin-top: 22px; }
+@page { size: 8.5in 13in; margin: 0.4in; }
+@media print {
+  .sf9-back-start { break-before: page; }
+  #report-dialog .report-print-hint { display: none; }
 }
