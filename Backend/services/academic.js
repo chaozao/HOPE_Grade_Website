@@ -10,11 +10,11 @@ const P = require('./academic-policy');
 const GradingAccess = require('./grading-access');
 const SubjectLeadership = require('../models/SubjectLeadership');
 const SF9 = require('./sf9');
-const TermGrades = require('../../Frontend/js/term-grades');
+const TermGrades = require('./term-grades');
 const Attendance = require('../models/Attendance');
 const NarrativeReport = require('../models/NarrativeReport');
 const CoreValueReport = require('../models/CoreValueReport');
-const CoreValues = require('../../Frontend/js/core-values');
+const CoreValues = require('./core-values');
 const dailyAttendance = require('./daily-attendance');
 async function advisorySubject(actor, subjectId) {
   await teacher(actor);

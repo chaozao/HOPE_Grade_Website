@@ -10,12 +10,14 @@ const { spawn } = require('node:child_process');
 const { once } = require('node:events');
 const vm = require('node:vm');
 
-test('API configuration follows the website host for local and LAN access', () => {
+test('API configuration uses the hosting mount except for explicit local development', () => {
   const source = fs.readFileSync(path.resolve(__dirname, '../js/config.js'), 'utf8');
   for (const [page, expected] of [
     ['http://localhost/HOPE_Grade_Website/Frontend/index.html', 'http://localhost:3000'],
     ['http://127.0.0.1:5500/Frontend/index.html', 'http://127.0.0.1:3000'],
-    ['http://172.16.0.2:5500/index.html', 'http://172.16.0.2:3000'],
+    ['https://oikostechnologies.click/gradebook/', 'https://oikostechnologies.click/grading-api'],
+    ['https://www.oikostechnologies.click/gradebook/', 'https://www.oikostechnologies.click/grading-api'],
+    ['http://172.16.0.2:5500/index.html', 'http://172.16.0.2:5500/grading-api'],
     ['file:///C:/xampp/htdocs/HOPE_Grade_Website/Frontend/index.html', 'http://localhost:3000']
   ]) {
     assert.equal(

@@ -2,7 +2,7 @@ const Attendance = require('../models/Attendance');
 const Narrative = require('../models/NarrativeReport');
 const Values = require('../models/CoreValueReport');
 const dailyAttendance = require('./daily-attendance');
-const catalog = require('../../Frontend/js/core-values');
+const catalog = require('./core-values');
 
 async function source(studentIds, subjectIds, session = null) {
   const filter = { student: { $in: studentIds }, subject: { $in: subjectIds } };

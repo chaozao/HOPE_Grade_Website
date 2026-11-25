@@ -14,7 +14,8 @@ window.ProfilePhoto = (function () {
     target.replaceChildren(icon);
   }
   function render(path) {
-    photoUrl = path ? new URL(path, API_BASE_URL).href : '';
+    // Stored upload paths belong to the API, including its hosting prefix.
+    photoUrl = path ? new URL(path.replace(/^\/+/, ''), API_BASE_URL.replace(/\/+$/, '') + '/').href : '';
     const remove = document.getElementById('remove-profile-photo');
     if (remove) remove.hidden = !photoUrl;
     document.querySelectorAll('.user-avatar, #avatar-preview').forEach((target) => {

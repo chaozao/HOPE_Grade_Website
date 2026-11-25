@@ -22,14 +22,14 @@ class Element {
   getBoundingClientRect() { return { top: 10, left: 10, bottom: 700, right: 900 }; }
 }
 const all = (root) => root.children.flatMap((child) => [child, ...all(child)]);
-function fixture(role, previewEnabled = true) {
+function fixture(role, previewEnabled = true, apiBase = 'http://localhost:3000') {
   const body = new Element('body'), sidebar = new Element('div'), preview = new Element('button');
   preview.id = 'avatar-preview';
   const remove = new Element('button'), input = new Element('input'), banner = new Element('p');
   const targets = previewEnabled ? [sidebar, preview] : [sidebar];
   body.append(...targets);
   let ready, fetches = 0;
-  const context = { URL, API_BASE_URL: 'http://localhost:3000',
+  const context = { URL, API_BASE_URL: apiBase,
     getToken: () => 'token', getPayload: () => ({ role }),
     window: { addEventListener() {} },
     document: {
@@ -43,6 +43,15 @@ function fixture(role, previewEnabled = true) {
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../js/profile-photo.js'), 'utf8'), context);
   return { api: context.window.ProfilePhoto, body, sidebar, preview, remove, banner, ready: () => ready(), fetches: () => fetches };
 }
+test('hosted profile photos retain the API mount path', () => {
+  for (const base of ['https://oikostechnologies.click/grading-api', 'https://oikostechnologies.click/grading-api/']) {
+    const view = fixture('teacher', true, base);
+    view.api.render('/uploads/avatars/saved.jpg');
+    assert.equal(view.sidebar.children[0].src, 'https://oikostechnologies.click/grading-api/uploads/avatars/saved.jpg');
+    assert.equal(view.preview.children[0].src, view.sidebar.children[0].src);
+  }
+});
+
 test('Remove photo restores the default icon for each role', async () => {
   for (const role of ['admin', 'teacher']) {
     const view = fixture(role);

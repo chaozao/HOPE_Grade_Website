@@ -9,7 +9,6 @@ const nodemailer = require('nodemailer'); // npm install nodemailer
 const multer = require('multer'); // npm install multer — handles the photo upload
 const path = require('path'); // built into Node — no install needed
 const fs = require('fs'); // built into Node — no install needed
-const os = require('os'); // built into Node — no install needed
 const User = require('./models/User');
 const Class = require('./models/Class');
 const Subject = require('./models/Subject');
@@ -27,57 +26,28 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ---------- Only allow requests from the same Wi-Fi network as this server ----------
-// This used to hardcode one Wi-Fi's address range, which broke the moment the
-// computer joined a different network. Now it asks the computer running this
-// server which network(s) it is connected to RIGHT NOW, and only lets in
-// devices on one of those same networks. Move to another Wi-Fi and it adapts
-// by itself - nothing here needs editing. Devices outside (a different network,
-// or anyone on the internet) are still rejected.
-
-// Turns "192.168.1.30" into one plain number, so addresses can be compared.
-function ipToNumber(ip) {
-  return (
-    ip.split('.').reduce(function (total, octet) {
-      return (total << 8) + Number(octet);
-    }, 0) >>> 0
-  );
-}
-
-function isOnAllowedNetwork(ip) {
-  if (!ip) return false;
-
-  // Requests made from this same computer look like these - always allow those.
-  if (ip === '::1' || ip === '127.0.0.1' || ip === '::ffff:127.0.0.1') return true;
-
-  const cleaned = ip.replace('::ffff:', ''); // Node sometimes adds this prefix to IPv4 addresses
-  if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(cleaned)) return false;
-
-  const clientNumber = ipToNumber(cleaned);
-  const interfaces = os.networkInterfaces();
-
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      const isIPv4 = iface.family === 'IPv4' || iface.family === 4;
-      if (!isIPv4 || iface.internal) continue;
-
-      // A device is on the same network when, after hiding the "host" part
-      // of both addresses with the subnet mask, what's left is identical.
-      const mask = ipToNumber(iface.netmask);
-      if ((clientNumber & mask) === (ipToNumber(iface.address) & mask)) return true;
-    }
-  }
-
-  return false;
-}
-
-app.use(function (req, res, next) {
-  if (!isOnAllowedNetwork(req.ip)) {
-    return res
-      .status(403)
-      .json({ error: 'This server is only reachable from its home Wi-Fi network.' });
+// Handle the Z.com application URL prefix
+app.use((req, res, next) => {
+  if (req.url === '/grading-api') {
+    req.url = '/';
+  } else if (req.url.startsWith('/grading-api/')) {
+    req.url = req.url.slice('/grading-api'.length);
   }
   next();
+});
+
+app.get('/', (req, res) => {
+  res.json({
+    message: 'HOPE Gradebook API is running!',
+    status: 'success'
+  });
+});
+
+app.get('/grading-api', (req, res) => {
+  res.json({
+    message: 'HOPE Gradebook API is running!',
+    status: 'success'
+  });
 });
 
 mongoose
@@ -274,9 +244,6 @@ app.post('/reset-password', async (req, res) => {
   }
 });
 
-app.listen(3000, () => {
-  console.log('Server is running at http://localhost:3000');
-});
 
 const { verifyToken, requireRole } = require('./middleware/auth');
 
@@ -580,3 +547,10 @@ app.get('/admin/subjects', verifyToken, requireRole('admin'), async (req, res) =
 
 app.use(require('./routes/academic'));
 app.use('/section-subjects', require('./routes/section-subjects'));
+
+// Start the Gradebook server
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Gradebook API running on port ${PORT}`);
+});
