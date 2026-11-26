@@ -21,23 +21,27 @@ document.addEventListener('DOMContentLoaded', function () {
     submitBtn.textContent = 'Sending…';
 
     try {
-      await fetch(API_BASE_URL + '/forget-password', {
+      const response = await fetch(API_BASE_URL + '/forget-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data) {
+        throw new Error(data?.error || 'The email service did not respond correctly. Please try again later.');
+      }
 
       // Always show the same message, whether or not that email exists —
       // that's what stops this form from being used to check who has an account.
       form.hidden = true;
       subtitle.hidden = true;
       showBanner(
-        'If an account exists for that email, a reset link is on its way. Check your inbox.',
+        data.message,
         'success'
       );
     } catch (error) {
-      console.log('Something went wrong:', error);
-      showBanner('Could not reach the server. Please try again.');
+      showBanner(error.message || 'Could not reach the server. Please try again.', 'error');
       submitBtn.disabled = false;
       submitBtn.textContent = 'Send reset link';
     }

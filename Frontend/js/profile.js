@@ -33,13 +33,10 @@ document.addEventListener('DOMContentLoaded', function () {
     try {
       data = await response.json();
     } catch (e) {
-      // The server answered with something that isn't JSON (for example an
-      // HTML "Cannot GET" page) - usually means the backend isn't running
-      // the latest server.js yet.
       throw new Error(
-        'The server did not answer correctly (status ' +
+        'The hosting server returned an unexpected response (status ' +
           response.status +
-          '). Make sure the backend is running the latest server.js.'
+          '). Please retry or contact the administrator.'
       );
     }
 
@@ -104,6 +101,11 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('photo-input').addEventListener('change', async function () {
     const file = this.files[0];
     if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      showBanner('Choose a photo 25 MB or smaller.', 'error');
+      this.value = '';
+      return;
+    }
 
     const formData = new FormData();
     formData.append('photo', file);

@@ -34,10 +34,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const controller = new AbortController();
     const timeout = setTimeout(function () {
       controller.abort();
-    }, 15000);
+    }, options.body instanceof FormData ? 120000 : 15000);
     try {
       const response = await fetch(url, { ...options, signal: controller.signal });
-      const data = await response.json();
+      const data = await response.json().catch(() => {
+        throw new Error('The hosting server returned an unexpected response (status ' + response.status + '). Please retry or contact the administrator.');
+      });
       if (!response.ok) throw new Error(data.error || 'Something went wrong.');
       return data;
     } catch (error) {
@@ -685,6 +687,11 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('photo-input').addEventListener('change', async function () {
     const file = this.files[0];
     if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      showProfileBanner('Choose a photo 25 MB or smaller.', 'error');
+      this.value = '';
+      return;
+    }
 
     const formData = new FormData();
     formData.append('photo', file);

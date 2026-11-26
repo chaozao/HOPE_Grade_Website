@@ -1,14 +1,13 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const jwt = require('jsonwebtoken');
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
 const crypto = require('crypto'); // built into Node — no install needed
-const nodemailer = require('nodemailer'); // npm install nodemailer
-const multer = require('multer'); // npm install multer — handles the photo upload
+const { createPasswordMail, logMailError } = require('./services/password-mail');
+const createAvatarUpload = require('./middleware/avatar-upload');
 const path = require('path'); // built into Node — no install needed
-const fs = require('fs'); // built into Node — no install needed
 const User = require('./models/User');
 const Class = require('./models/Class');
 const Subject = require('./models/Subject');
@@ -60,44 +59,9 @@ mongoose
     console.log(error);
   });
 
-// Used by /forget-password below to actually send the reset email through Gmail
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD
-  }
-});
-
-// ---------- Profile photo uploads ----------
-// Make sure the folder we're about to save photos into actually exists -
-// multer will not create missing folders on its own.
-const avatarsDir = path.join(__dirname, 'uploads', 'avatars');
-fs.mkdirSync(avatarsDir, { recursive: true });
-
-// Serve uploaded photos as plain files, e.g. GET /uploads/avatars/abc123.jpg
+// Uploads are stored on the hosting server, beneath this backend folder.
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-const avatarUpload = multer({
-  storage: multer.diskStorage({
-    destination: function (req, file, cb) {
-      cb(null, avatarsDir);
-    },
-    filename: function (req, file, cb) {
-      // Name the file after the logged-in user, so a re-upload just replaces
-      // the old one instead of piling up unused files forever.
-      const ext = path.extname(file.originalname);
-      cb(null, req.user.userId + '-' + Date.now() + ext);
-    }
-  }),
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max
-  fileFilter: function (req, file, cb) {
-    if (!file.mimetype.startsWith('image/')) {
-      return cb(new Error('Only image files are allowed.'));
-    }
-    cb(null, true);
-  }
-});
+const avatarUpload = createAvatarUpload(path.join(__dirname, 'uploads', 'avatars'));
 
 app.post('/signup', async (req, res) => {
   try {
@@ -175,42 +139,41 @@ app.post('/login', async (req, res) => {
 // ---------- Forgot password flow ----------
 
 app.post('/forget-password', async (req, res) => {
-  try {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
+  const email = req.body && req.body.email;
+  if (typeof email !== 'string' || !email.trim()) {
+    return res.status(400).json({ error: 'Enter your email address.' });
+  }
 
-    // Respond the same way whether or not the email exists - this stops the
-    // route from being used to check who has an account and who doesn't.
+  let mail;
+  try {
+    mail = createPasswordMail();
+    // Check infrastructure before looking up the account. An SMTP outage
+    // returns the same response for registered and unregistered addresses.
+    await mail.verify();
+  } catch (error) {
+    logMailError(error);
+    return res.status(503).json({ error: 'Password reset email is temporarily unavailable. Please try again later or contact the administrator.' });
+  }
+
+  try {
+    const user = await User.findOne({ email: email.trim() });
     if (user) {
       const rawToken = crypto.randomBytes(32).toString('hex');
-      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-
-      user.resetTokenHash = tokenHash;
-      user.resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+      user.resetTokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      user.resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
       await user.save();
-
-      const resetLink = `${process.env.FRONTEND_URL}/reset-password.html?token=${rawToken}`;
-
       try {
-        await transporter.sendMail({
-          from: `"Hope Grade Website" <${process.env.GMAIL_USER}>`,
-          to: email,
-          subject: 'Reset your password',
-          html: `<p>Click the link below to reset your password. It expires in 15 minutes.</p>
-                 <p><a href="${resetLink}">${resetLink}</a></p>
-                 <p>If you didn't request this, you can ignore this email.</p>`
-        });
-      } catch (emailError) {
-        console.log('Failed to send reset email:');
-        console.log(emailError);
+        await mail.send(user.email, rawToken);
+      } catch (error) {
+        // Recipient-specific delivery errors must not reveal account existence.
+        // The hosting log records a safe code for the administrator instead.
+        logMailError(error);
       }
     }
-
-    res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
+    res.json({ message: 'If an account exists for that email, a reset email has been requested. Check your inbox and spam folder.' });
   } catch (error) {
-    console.log('Something went wrong during forget-password:');
-    console.log(error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+    console.error('[password-reset] ACCOUNT_UPDATE_FAILED');
+    res.status(500).json({ error: 'Could not process the reset request. Please try again.' });
   }
 });
 
@@ -291,7 +254,7 @@ app.put('/me', verifyToken, async (req, res) => {
 });
 
 // Upload/replace your own profile photo
-app.post('/me/photo', verifyToken, avatarUpload.single('photo'), async (req, res) => {
+app.post('/me/photo', verifyToken, avatarUpload, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No photo was uploaded.' });
