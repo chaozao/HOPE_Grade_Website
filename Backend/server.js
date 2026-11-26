@@ -76,6 +76,9 @@ app.post('/signup', async (req, res) => {
     console.log('New user saved to database:', newUser);
     res.json({ message: `Thank you for signing up, ${username}!` });
   } catch (error) {
+    if (error.code === 11000 && (error.keyPattern?.email || error.keyValue?.email || /index:\s*email_1\b/.test(error.message || ''))) {
+      return res.status(409).json({ error: 'This account already exists. Please enter another email.' });
+    }
     console.log('Something went wrong while saving the user:');
     console.log(error);
     res.status(400).json({ error: error.message });
